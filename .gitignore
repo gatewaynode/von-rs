@@ -1,0 +1,32 @@
+# Build output and local model weights
+/target
+/checkpoints
+
+# Private planning and hand-off notes (kept locally, not published)
+/PRD.md
+/ARCHITECTURE.md
+/TASKS.md
+/CONTINUITY.md
+
+# Python bytecode from the tools/ scripts
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon[\r]
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk

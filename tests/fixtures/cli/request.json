@@ -1,0 +1,1 @@
+{"model": "von-1.1", "state": {"msg": "na\u00efve \u2603"}, "questions": {"kind": {"type": "choice", "instructions": "Which?", "criteria": {"caf\u00e9": "Coffee", "bar": null}}, "is_payment": {"type": "noul", "instructions": "Payment?"}, "severity": {"type": "score", "instructions": "How bad?", "criteria": ["low", "mid", "high"]}}}

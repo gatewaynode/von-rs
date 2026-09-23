@@ -1,0 +1,61 @@
+[package]
+name = "von-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Native Rust runtime for Von, the open-source System One decision model (macOS)"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "von"
+path = "src/lib.rs"
+
+[[bin]]
+name = "von"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["metal", "accelerate", "hub", "client", "server", "cli"]
+# Apple GPU via candle's Metal backend.
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal", "dep:candle-metal-kernels"]
+# Apple Accelerate (AMX) BLAS for the CPU path; ~3.3x faster than candle's default gemm.
+accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
+# Download weights from the Hugging Face Hub when no local checkpoint is found.
+hub = ["dep:hf-hub"]
+# Blocking HTTP client for a remote `/v1/systemone` server (`VonClient`).
+client = ["dep:reqwest"]
+# The drop-in `/v1/systemone` HTTP server (`von::server`).
+server = ["dep:axum", "dep:tokio"]
+# The `von` binary.
+cli = ["server", "dep:clap", "dep:tracing-subscriber"]
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"], optional = true }
+candle-core = "0.11"
+candle-nn = "0.11"
+candle-transformers = "0.11"
+candle-metal-kernels = { version = "0.11", optional = true }
+clap = { version = "4.6", features = ["derive"], optional = true }
+hf-hub = { version = "1.0", features = ["blocking"], optional = true }
+indexmap = { version = "2", features = ["serde"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"], optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+thiserror = "2"
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+tokio = { version = "1.53", features = ["rt-multi-thread", "net", "signal", "sync"], optional = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"], optional = true }
+
+[dev-dependencies]
+anyhow = "1"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tokio = { version = "1.53", features = ["rt", "macros"] }
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"

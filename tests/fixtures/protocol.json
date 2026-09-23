@@ -1,0 +1,1436 @@
+{
+ "canned": {
+  "choice": {
+   "type": "choice",
+   "choice": "café",
+   "probabilities": {
+    "café": 0.9999,
+    "bar": 0.0001
+   },
+   "confidence": 0.999
+  },
+  "noul": {
+   "type": "noul",
+   "noul": 0.8125
+  },
+  "score": {
+   "type": "score",
+   "score": 1.0,
+   "confidence": 0.25,
+   "legend": {
+    "0": "low",
+    "1": "mid",
+    "2": "high"
+   },
+   "probabilities": {
+    "0": 0.1,
+    "1": 0.8,
+    "2": 0.1
+   }
+  }
+ },
+ "server": [
+  {
+   "name": "health root",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "health",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "head health",
+   "config": {},
+   "request": {
+    "method": "HEAD",
+    "path": "/health",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 405,
+    "headers": {
+     "allow": "GET",
+     "content-type": "application/json"
+    },
+    "body": ""
+   }
+  },
+  {
+   "name": "models",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/v1/models",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"models\":[{\"name\":\"von-latest\",\"description\":\"Current Von System One decision model\",\"release_date\":\"2026-09-21\"},{\"name\":\"von-1.1.0\",\"description\":\"Von 1.1 stable release\",\"release_date\":\"2026-09-21\"},{\"name\":\"jev-latest\",\"description\":\"TypeSafe Jev compatibility alias\",\"release_date\":\"2026-09-21\"}],\"object\":\"list\",\"data\":[{\"id\":\"von-latest\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"von-1.1.0\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"jev-latest\",\"object\":\"model\",\"owned_by\":\"von\"}]}"
+   }
+  },
+  {
+   "name": "valid",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": {
+     "ticket": "Überweisung fehlgeschlagen",
+     "n": 3
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"kind\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999},\"is_payment\":{\"type\":\"noul\",\"noul\":0.8125},\"severity\":{\"type\":\"score\",\"score\":1.0,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.1,\"1\":0.8,\"2\":0.1}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "default model and null state",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"state\": null, \"questions\": {}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": null,
+    "questions": {},
+    "model": "von-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "engine error",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": "boom: bad question",
+   "engine_saw": {
+    "state": {
+     "ticket": "Überweisung fehlgeschlagen",
+     "n": 3
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"boom: bad question\"}"
+   }
+  },
+  {
+   "name": "invalid json",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{bad"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"json_invalid\",\"loc\":[\"body\",1],\"msg\":\"JSON decode error\",\"input\":{},\"ctx\":{\"error\":\"Expecting property name enclosed in double quotes\"}}]}"
+   }
+  },
+  {
+   "name": "empty body",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": ""
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\"],\"msg\":\"Field required\",\"input\":null}]}"
+   }
+  },
+  {
+   "name": "no content type",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {},
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"model_attributes_type\",\"loc\":[\"body\"],\"msg\":\"Input should be a valid dictionary or object to extract fields from\",\"input\":\"{\\\"model\\\": \\\"jev-latest\\\", \\\"state\\\": {\\\"ticket\\\": \\\"\\\\u00dcberweisung fehlgeschlagen\\\", \\\"n\\\": 3}, \\\"questions\\\": {\\\"kind\\\": {\\\"type\\\": \\\"choice\\\", \\\"instructions\\\": \\\"Which?\\\", \\\"criteria\\\": {\\\"caf\\\\u00e9\\\": \\\"Coffee\\\", \\\"bar\\\": null}}, \\\"is_payment\\\": {\\\"type\\\": \\\"noul\\\", \\\"instructions\\\": \\\"Payment?\\\"}, \\\"severity\\\": {\\\"type\\\": \\\"score\\\", \\\"instructions\\\": \\\"How bad?\\\", \\\"criteria\\\": [\\\"low\\\", \\\"mid\\\", \\\"high\\\"]}}}\"}]}"
+   }
+  },
+  {
+   "name": "text content type",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "text/plain"
+    },
+    "body": "hello"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"model_attributes_type\",\"loc\":[\"body\"],\"msg\":\"Input should be a valid dictionary or object to extract fields from\",\"input\":\"hello\"}]}"
+   }
+  },
+  {
+   "name": "json suffix content type",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/vnd.von+json; charset=utf-8"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": {
+     "ticket": "Überweisung fehlgeschlagen",
+     "n": 3
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"kind\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999},\"is_payment\":{\"type\":\"noul\",\"noul\":0.8125},\"severity\":{\"type\":\"score\",\"score\":1.0,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.1,\"1\":0.8,\"2\":0.1}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "body is a list",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "[1]"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"model_attributes_type\",\"loc\":[\"body\"],\"msg\":\"Input should be a valid dictionary or object to extract fields from\",\"input\":[1]}]}"
+   }
+  },
+  {
+   "name": "several field errors",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": null, \"questions\": {\"a\": 1, \"b\": {}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"model\"],\"msg\":\"Input should be a valid string\",\"input\":null},{\"type\":\"missing\",\"loc\":[\"body\",\"state\"],\"msg\":\"Field required\",\"input\":{\"model\":null,\"questions\":{\"a\":1,\"b\":{}}}},{\"type\":\"dict_type\",\"loc\":[\"body\",\"questions\",\"a\"],\"msg\":\"Input should be a valid dictionary\",\"input\":1}]}"
+   }
+  },
+  {
+   "name": "questions not a dict",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": 5, \"state\": \"x\", \"questions\": [1]}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"model\"],\"msg\":\"Input should be a valid string\",\"input\":5},{\"type\":\"dict_type\",\"loc\":[\"body\",\"questions\"],\"msg\":\"Input should be a valid dictionary\",\"input\":[1]}]}"
+   }
+  },
+  {
+   "name": "extra fields ignored",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"state\": \"x\", \"questions\": {}, \"stream\": true}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": "x",
+    "questions": {},
+    "model": "von-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "not found",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/nope",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 404,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Not Found\"}"
+   }
+  },
+  {
+   "name": "method not allowed",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/health",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 405,
+    "headers": {
+     "allow": "GET",
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   }
+  },
+  {
+   "name": "get on post route",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/v1/systemone",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 405,
+    "headers": {
+     "allow": "POST",
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   }
+  },
+  {
+   "name": "trailing slash redirect",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/health/?x=1",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 307,
+    "headers": {
+     "location": "http://testserver/health?x=1"
+    },
+    "body": ""
+   }
+  },
+  {
+   "name": "trailing slash redirect post",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone/",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 307,
+    "headers": {
+     "location": "http://testserver/v1/systemone"
+    },
+    "body": ""
+   }
+  },
+  {
+   "name": "auth missing header",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 401,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Missing or invalid Bearer token\"}"
+   }
+  },
+  {
+   "name": "auth wrong scheme",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json",
+     "authorization": "Basic secret"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 401,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Missing or invalid Bearer token\"}"
+   }
+  },
+  {
+   "name": "auth wrong key",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json",
+     "authorization": "Bearer nope"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 401,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Unauthorized: invalid API key\"}"
+   }
+  },
+  {
+   "name": "auth ok with padding",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json",
+     "authorization": "Bearer  secret "
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": {
+     "ticket": "Überweisung fehlgeschlagen",
+     "n": 3
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"kind\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999},\"is_payment\":{\"type\":\"noul\",\"noul\":0.8125},\"severity\":{\"type\":\"score\",\"score\":1.0,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.1,\"1\":0.8,\"2\":0.1}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "auth lowercase scheme",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json",
+     "authorization": "bearer secret"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 401,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":\"Missing or invalid Bearer token\"}"
+   }
+  },
+  {
+   "name": "validation before auth",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{bad"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"json_invalid\",\"loc\":[\"body\",1],\"msg\":\"JSON decode error\",\"input\":{},\"ctx\":{\"error\":\"Expecting property name enclosed in double quotes\"}}]}"
+   }
+  },
+  {
+   "name": "auth not needed for health",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {},
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "cors wildcard preflight",
+   "config": {},
+   "request": {
+    "method": "OPTIONS",
+    "path": "/v1/systemone",
+    "headers": {
+     "origin": "http://a.com",
+     "access-control-request-method": "POST",
+     "access-control-request-headers": "content-type,x-foo"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "access-control-allow-headers": "content-type,x-foo",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "cors wildcard preflight bad method",
+   "config": {},
+   "request": {
+    "method": "OPTIONS",
+    "path": "/v1/systemone",
+    "headers": {
+     "origin": "http://a.com",
+     "access-control-request-method": "TRACE"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 400,
+    "headers": {
+     "access-control-allow-origin": "*",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "Disallowed CORS method"
+   }
+  },
+  {
+   "name": "cors wildcard simple",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {
+     "origin": "http://a.com"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json",
+     "access-control-allow-origin": "*"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "cors wildcard simple with cookie",
+   "config": {},
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {
+     "origin": "http://a.com",
+     "cookie": "a=b"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json",
+     "access-control-allow-origin": "*"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "options without preflight",
+   "config": {},
+   "request": {
+    "method": "OPTIONS",
+    "path": "/health",
+    "headers": {
+     "origin": "http://a.com"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 405,
+    "headers": {
+     "allow": "GET",
+     "content-type": "application/json",
+     "access-control-allow-origin": "*"
+    },
+    "body": "{\"detail\":\"Method Not Allowed\"}"
+   }
+  },
+  {
+   "name": "cors allowlist preflight",
+   "config": {
+    "cors": " http://a.com, ,http://b.com"
+   },
+   "request": {
+    "method": "OPTIONS",
+    "path": "/v1/systemone",
+    "headers": {
+     "origin": "http://b.com",
+     "access-control-request-method": "POST",
+     "access-control-request-headers": "authorization"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "vary": "Origin",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-origin": "http://b.com",
+     "access-control-allow-headers": "authorization",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "cors allowlist preflight denied",
+   "config": {
+    "cors": "http://a.com,http://b.com"
+   },
+   "request": {
+    "method": "OPTIONS",
+    "path": "/v1/systemone",
+    "headers": {
+     "origin": "http://evil.com",
+     "access-control-request-method": "POST"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 400,
+    "headers": {
+     "vary": "Origin",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "access-control-allow-credentials": "true",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "Disallowed CORS origin"
+   }
+  },
+  {
+   "name": "cors allowlist simple",
+   "config": {
+    "cors": "http://a.com,http://b.com"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json",
+     "origin": "http://a.com"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": {\"ticket\": \"\\u00dcberweisung fehlgeschlagen\", \"n\": 3}, \"questions\": {\"kind\": {\"type\": \"choice\", \"instructions\": \"Which?\", \"criteria\": {\"caf\\u00e9\": \"Coffee\", \"bar\": null}}, \"is_payment\": {\"type\": \"noul\", \"instructions\": \"Payment?\"}, \"severity\": {\"type\": \"score\", \"instructions\": \"How bad?\", \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": {
+     "ticket": "Überweisung fehlgeschlagen",
+     "n": 3
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-origin": "http://a.com",
+     "vary": "Origin"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"kind\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999},\"is_payment\":{\"type\":\"noul\",\"noul\":0.8125},\"severity\":{\"type\":\"score\",\"score\":1.0,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.1,\"1\":0.8,\"2\":0.1}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "cors allowlist simple denied",
+   "config": {
+    "cors": "http://a.com"
+   },
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {
+     "origin": "http://evil.com"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json",
+     "access-control-allow-credentials": "true"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  },
+  {
+   "name": "cors star among others",
+   "config": {
+    "cors": "*,http://a.com"
+   },
+   "request": {
+    "method": "OPTIONS",
+    "path": "/health",
+    "headers": {
+     "origin": "http://z.com",
+     "access-control-request-method": "GET"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "vary": "Origin",
+     "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+     "access-control-max-age": "600",
+     "access-control-allow-credentials": "true",
+     "access-control-allow-origin": "http://z.com",
+     "content-type": "text/plain; charset=utf-8"
+    },
+    "body": "OK"
+   }
+  },
+  {
+   "name": "cors empty list",
+   "config": {
+    "cors": ""
+   },
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "headers": {
+     "origin": "http://a.com"
+    },
+    "body": null
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json",
+     "access-control-allow-credentials": "true"
+    },
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+   }
+  }
+ ],
+ "cli": [
+  {
+   "name": "decide",
+   "args": [
+    "decide",
+    "I was charged twice",
+    "-c",
+    " refund, bug ,,café"
+   ],
+   "engine_saw": {
+    "state": "I was charged twice",
+    "questions": {
+     "decision": {
+      "type": "choice",
+      "instructions": "Which option best describes the input?",
+      "criteria": {
+       "refund": null,
+       "bug": null,
+       "café": null
+      }
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"choice\": \"caf\\u00e9\",\n  \"confidence\": 0.999,\n  \"probabilities\": {\n    \"caf\\u00e9\": 0.9999,\n    \"bar\": 0.0001\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "decide custom instructions",
+   "args": [
+    "decide",
+    "x",
+    "--choices",
+    "a,b",
+    "-i",
+    "Pick one",
+    "--device",
+    "cpu"
+   ],
+   "engine_saw": {
+    "state": "x",
+    "questions": {
+     "decision": {
+      "type": "choice",
+      "instructions": "Pick one",
+      "criteria": {
+       "a": null,
+       "b": null
+      }
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"choice\": \"caf\\u00e9\",\n  \"confidence\": 0.999,\n  \"probabilities\": {\n    \"caf\\u00e9\": 0.9999,\n    \"bar\": 0.0001\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "decide no choices",
+   "args": [
+    "decide",
+    "x",
+    "-c",
+    " , ,"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "Error: At least one choice must be provided.\n",
+   "exception": null
+  },
+  {
+   "name": "decide duplicate choices",
+   "args": [
+    "decide",
+    "x",
+    "-c",
+    "a,b,a"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "",
+   "exception": "ValueError: Duplicate choices found in options list: ['a', 'b', 'a']"
+  },
+  {
+   "name": "decide missing choices",
+   "args": [
+    "decide",
+    "x"
+   ],
+   "engine_saw": null,
+   "exit": 2,
+   "stdout": "",
+   "stderr": "Usage: von decide [OPTIONS] TEXT\nTry 'von decide --help' for help.\n\nError: Missing option '-c' / '--choices'.\n",
+   "exception": null
+  },
+  {
+   "name": "judge",
+   "args": [
+    "judge",
+    "Prod is down",
+    "-i",
+    "Is it down?"
+   ],
+   "engine_saw": {
+    "state": "Prod is down",
+    "questions": {
+     "judgment": {
+      "type": "noul",
+      "instructions": "Is it down?",
+      "criteria": null
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"type\": \"noul\",\n  \"instructions\": \"Is it down?\",\n  \"noul\": 0.8125\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "judge pos only",
+   "args": [
+    "judge",
+    "Prod is down",
+    "-i",
+    "Is it down?",
+    "--pos",
+    "Down"
+   ],
+   "engine_saw": {
+    "state": "Prod is down",
+    "questions": {
+     "judgment": {
+      "type": "noul",
+      "instructions": "Is it down?",
+      "criteria": {
+       "true": "Down"
+      }
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"type\": \"noul\",\n  \"instructions\": \"Is it down?\",\n  \"noul\": 0.8125\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "judge pos and neg",
+   "args": [
+    "judge",
+    "x",
+    "-i",
+    "Q?",
+    "--pos",
+    "Down",
+    "--neg",
+    "Up"
+   ],
+   "engine_saw": {
+    "state": "x",
+    "questions": {
+     "judgment": {
+      "type": "noul",
+      "instructions": "Q?",
+      "criteria": {
+       "true": "Down",
+       "false": "Up"
+      }
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"type\": \"noul\",\n  \"instructions\": \"Q?\",\n  \"noul\": 0.8125\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "rate",
+   "args": [
+    "rate",
+    "Slow page",
+    "-l",
+    "low, mid ,high"
+   ],
+   "engine_saw": {
+    "state": "Slow page",
+    "questions": {
+     "rating": {
+      "type": "score",
+      "instructions": "Rate where the state falls on this scale:",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"type\": \"score\",\n  \"score\": 1.0,\n  \"confidence\": 0.25,\n  \"legend\": {\n    \"0\": \"low\",\n    \"1\": \"mid\",\n    \"2\": \"high\"\n  },\n  \"probabilities\": {\n    \"0\": 0.1,\n    \"1\": 0.8,\n    \"2\": 0.1\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "rate custom instructions",
+   "args": [
+    "rate",
+    "x",
+    "--levels",
+    "a,b",
+    "--instructions",
+    "Scale:"
+   ],
+   "engine_saw": {
+    "state": "x",
+    "questions": {
+     "rating": {
+      "type": "score",
+      "instructions": "Scale:",
+      "criteria": [
+       "a",
+       "b"
+      ]
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"type\": \"score\",\n  \"score\": 1.0,\n  \"confidence\": 0.25,\n  \"legend\": {\n    \"0\": \"low\",\n    \"1\": \"mid\",\n    \"2\": \"high\"\n  },\n  \"probabilities\": {\n    \"0\": 0.1,\n    \"1\": 0.8,\n    \"2\": 0.1\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "rate one level",
+   "args": [
+    "rate",
+    "x",
+    "-l",
+    "only,"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "Error: At least two levels must be provided.\n",
+   "exception": null
+  },
+  {
+   "name": "eval",
+   "args": [
+    "eval",
+    "request.json"
+   ],
+   "engine_saw": {
+    "state": {
+     "msg": "naïve ☃"
+    },
+    "questions": {
+     "kind": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "café": "Coffee",
+       "bar": null
+      }
+     },
+     "is_payment": {
+      "type": "noul",
+      "instructions": "Payment?"
+     },
+     "severity": {
+      "type": "score",
+      "instructions": "How bad?",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "von-1.1"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"model\": \"von-1.1.0\",\n  \"answers\": {\n    \"kind\": {\n      \"type\": \"choice\",\n      \"choice\": \"caf\\u00e9\",\n      \"probabilities\": {\n        \"caf\\u00e9\": 0.9999,\n        \"bar\": 0.0001\n      },\n      \"confidence\": 0.999\n    },\n    \"is_payment\": {\n      \"type\": \"noul\",\n      \"noul\": 0.8125\n    },\n    \"severity\": {\n      \"type\": \"score\",\n      \"score\": 1.0,\n      \"confidence\": 0.25,\n      \"legend\": {\n        \"0\": \"low\",\n        \"1\": \"mid\",\n        \"2\": \"high\"\n      },\n      \"probabilities\": {\n        \"0\": 0.1,\n        \"1\": 0.8,\n        \"2\": 0.1\n      }\n    }\n  },\n  \"usage\": {\n    \"input_tokens\": 12,\n    \"output_tokens\": 0\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "eval default model",
+   "args": [
+    "eval",
+    "default_model.json"
+   ],
+   "engine_saw": {
+    "state": "x",
+    "questions": {
+     "q": {
+      "instructions": "Which?",
+      "criteria": {
+       "a": null
+      }
+     }
+    },
+    "model": "von-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"model\": \"von-1.1.0\",\n  \"answers\": {\n    \"q\": {\n      \"type\": \"choice\",\n      \"choice\": \"caf\\u00e9\",\n      \"probabilities\": {\n        \"caf\\u00e9\": 0.9999,\n        \"bar\": 0.0001\n      },\n      \"confidence\": 0.999\n    }\n  },\n  \"usage\": {\n    \"input_tokens\": 12,\n    \"output_tokens\": 0\n  }\n}\n",
+   "stderr": "",
+   "exception": null
+  },
+  {
+   "name": "eval missing questions",
+   "args": [
+    "eval",
+    "no_questions.json"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "Error: JSON must contain 'state' and 'questions' fields.\n",
+   "exception": null
+  },
+  {
+   "name": "eval null state",
+   "args": [
+    "eval",
+    "null_state.json"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "Error: JSON must contain 'state' and 'questions' fields.\n",
+   "exception": null
+  },
+  {
+   "name": "eval invalid json",
+   "args": [
+    "eval",
+    "bad.json"
+   ],
+   "engine_saw": null,
+   "exit": 1,
+   "stdout": "",
+   "stderr": "Error: bad.json is not valid JSON: Expecting property name enclosed in double quotes: line 1 column 15 (char 14)\n",
+   "exception": null
+  },
+  {
+   "name": "eval missing file",
+   "args": [
+    "eval",
+    "missing.json"
+   ],
+   "engine_saw": null,
+   "exit": 2,
+   "stdout": "",
+   "stderr": "Usage: von eval [OPTIONS] REQUEST_FILE\nTry 'von eval --help' for help.\n\nError: Invalid value for 'REQUEST_FILE': Path 'missing.json' does not exist.\n",
+   "exception": null
+  },
+  {
+   "name": "version",
+   "args": [
+    "--version"
+   ],
+   "engine_saw": null,
+   "exit": 0,
+   "stdout": "von, version 1.0.0\n",
+   "stderr": "",
+   "exception": null
+  }
+ ]
+}
