@@ -18,7 +18,7 @@ required-features = ["cli"]
 [features]
 default = ["metal", "accelerate", "hub", "client", "server", "cli"]
 # Apple GPU via candle's Metal backend.
-metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal", "dep:candle-metal-kernels"]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal", "dep:candle-metal-kernels", "dep:objc2"]
 # Apple Accelerate (AMX) BLAS for the CPU path; ~3.3x faster than candle's default gemm.
 accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
 # Download weights from the Hugging Face Hub when no local checkpoint is found.
@@ -39,6 +39,7 @@ candle-metal-kernels = { version = "0.11", optional = true }
 clap = { version = "4.6", features = ["derive"], optional = true }
 hf-hub = { version = "1.0", features = ["blocking"], optional = true }
 indexmap = { version = "2", features = ["serde"] }
+objc2 = { version = "0.6", optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
@@ -50,9 +51,14 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 
 [dev-dependencies]
 anyhow = "1"
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 tokio = { version = "1.53", features = ["rt", "macros"] }
+
+[[bench]]
+name = "latency"
+harness = false
 
 [lints.rust]
 unsafe_code = "deny"

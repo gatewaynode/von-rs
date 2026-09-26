@@ -139,10 +139,21 @@ impl OptionMarkerModel {
                 token: self.mask_token.clone(),
             });
         }
-        let input = Tensor::new(ids.as_slice(), &self.device)?.unsqueeze(0)?;
+        // Metal returns some objects (command buffers, encoders) autoreleased. They are
+        // freed only when the calling thread's autorelease pool drains, and worker
+        // threads (e.g. tokio's blocking pool) never drain one, so drain per pass.
+        #[cfg(feature = "metal")]
+        if self.device.is_metal() {
+            return objc2::rc::autoreleasepool(|_| self.forward(&ids, &positions));
+        }
+        self.forward(&ids, &positions)
+    }
+
+    fn forward(&self, ids: &[u32], positions: &[u32]) -> Result<Vec<f32>> {
+        let input = Tensor::new(ids, &self.device)?.unsqueeze(0)?;
         let attention_mask = Tensor::ones_like(&input)?;
         let hidden = self.encoder.forward(&input, &attention_mask)?.i(0)?;
-        let reps = hidden.index_select(&Tensor::new(positions.as_slice(), &self.device)?, 0)?;
+        let reps = hidden.index_select(&Tensor::new(positions, &self.device)?, 0)?;
         Ok(self.scorer.forward(&reps)?.to_vec1()?)
     }
 }
