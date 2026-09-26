@@ -1,0 +1,47 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 builds the arm64 `von` binary and attaches it to
+# a GitHub release. The binary is not signed or notarized: macOS quarantines it
+# when downloaded with a browser (clear it with `xattr -d com.apple.quarantine von`).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Tag matches the crate version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["packages"][0]["version"])')
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}"
+            exit 1
+          fi
+      - run: cargo build --locked --release --bin von
+      - name: Package
+        run: |
+          name="von-${GITHUB_REF_NAME}-aarch64-apple-darwin"
+          mkdir "$name"
+          cp target/release/von README.md LICENSE "$name/"
+          tar -czf "$name.tar.gz" "$name"
+          shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
+          echo "ASSET=$name.tar.gz" >> "$GITHUB_ENV"
+      - name: Smoke test
+        run: ./target/release/von --version
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" "$ASSET" "$ASSET.sha256"
+          --verify-tag --generate-notes --title "von-rs $GITHUB_REF_NAME"

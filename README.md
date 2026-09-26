@@ -18,11 +18,32 @@ requests and 3.7× at about 800 tokens, measured before the Von 1.2 update (see
 `bench/BASELINE.md` and `bench/RESULTS.md`). Performance
 work comes after the port is complete, followed by an async API.
 
+## Install
+
+von-rs needs macOS on Apple Silicon. Either download `von-<version>-aarch64-apple-darwin.tar.gz`
+from the [releases](https://github.com/gatewaynode/von-rs/releases) (check it against its
+`.sha256`), or build it with a current stable Rust toolchain:
+
+```bash
+cargo install --locked --git https://github.com/gatewaynode/von-rs   # or `cargo install --locked --path .` in a checkout
+```
+
+Release binaries are not signed or notarized yet. If macOS blocks one downloaded with a
+browser, run `xattr -d com.apple.quarantine von`.
+
 ## Setup
 
 von-rs loads a converted checkpoint directory. `option_marker.safetensors` is not
-yet published to the Hugging Face repo, so create one from the Python weights
-(see [Development layout](#development-layout)), from the Von checkout's root:
+yet published to the Hugging Face repo, so create one from the Python weights with
+[uv](https://docs.astral.sh/uv/). From a von-rs checkout:
+
+```bash
+uv run --no-project --with torch --with safetensors --with huggingface_hub \
+  python tools/convert_weights.py --out ~/.local/models/von-1.2
+```
+
+Inside a Von checkout (see [Development layout](#development-layout)), the Von
+environment already has these packages:
 
 ```bash
 uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.2
@@ -31,6 +52,8 @@ uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.2
 The conversion is verified bit for bit. `checkpoints/` is gitignored. The converter
 downloads a pinned Hub commit (`tools/hub_pins.py`), not the repo's moving main branch;
 `--revision 1.1` converts Von 1.1, which the tests use as an optional regression set.
+Point the `von` binary at the result with `VON_CHECKPOINT_DIR`, in the environment or in
+the [settings file](#settings-file).
 
 To keep models outside the checkout, set `VON_MODELS_DIR` in the environment, in the
 settings file `~/.config/von/von.env` (see [Settings file](#settings-file)), or in a
@@ -165,6 +188,14 @@ SDKs (needs the converted checkpoint, `uv` and `bun`):
 bash tools/cross_sdk_check.sh                 # VON_DEVICE=metal for the GPU path
 ```
 
+CI (`.github/workflows/rust.yml`) runs fmt, clippy and `cargo test` on every push and
+pull request. The weights suite and the cross-SDK check need the 1.5 GB model, so they
+run only when the workflow is started by hand ("Run workflow"); the converted checkpoint
+is cached per Hub revision. GitHub's macOS runners have no usable Metal device, so CI
+tests the CPU path only; run `just gate-metal` locally for Metal. Pushing a `v*` tag
+that matches the `Cargo.toml` version runs `.github/workflows/release.yml`, which
+attaches the arm64 binary to a GitHub release.
+
 ## Development layout
 
 The Rust crate builds and tests on its own. The tools in `tools/` that talk to
@@ -215,6 +246,8 @@ Von 1.1 regression set (`tests/fixtures/golden/v1.json`, full attention), same c
 
 ## Differences from the Python runtime
 
+- **macOS only.** Metal or CPU (with Accelerate); there is no CUDA, ROCm or DirectML
+  backend, and `VON_DEVICE`/`--device` values for them are rejected.
 - **Loading is eager.** `Von::load` loads everything up front. Python loads on the first request.
 - **Over-length input is an error.** Inputs over 8,192 tokens (the model's trained
   context) return `InputTooLong` (HTTP 422, exit 1 in the CLI). Python runs them

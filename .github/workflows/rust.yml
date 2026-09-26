@@ -1,0 +1,116 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      python_repo:
+        description: Python Von repository for the cross-SDK check (owner/name)
+        default: gatewaynode/von
+      python_ref:
+        description: Branch, tag or commit of that repository
+        default: master
+
+env:
+  CARGO_TERM_COLOR: always
+  # GitHub's macOS runners have no usable Metal device: every job runs on CPU.
+  VON_DEVICE: cpu
+
+jobs:
+  check:
+    name: fmt, clippy, tests (no weights)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo clippy --locked --no-default-features --all-targets -- -D warnings
+      - run: cargo test --locked
+
+  # The jobs below need the 1.5 GB model and run only on manual dispatch.
+  weights:
+    name: Convert weights
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Cache key from the Hub revision
+        id: key
+        run: |
+          sha=$(curl -sf https://huggingface.co/api/models/wfzyx/von/revision/main \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["sha"])')
+          echo "key=von-weights-$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: weights
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+      - uses: astral-sh/setup-uv@v6
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Download and convert option_marker.pt
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          HF_HOME: ${{ runner.temp }}/hf
+        run: >
+          uv run --no-project --python 3.12
+          --with torch --with safetensors --with huggingface_hub
+          python tools/convert_weights.py --out weights
+
+  parity:
+    name: Parity and model tests (CPU)
+    needs: weights
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache/restore@v4
+        with:
+          path: weights
+          key: ${{ needs.weights.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Golden parity, unsafe audit, model-backed pattern and client tests
+        env:
+          VON_WEIGHTS: ${{ github.workspace }}/weights
+        run: cargo test --locked --release -- --ignored --nocapture
+
+  cross-sdk:
+    name: Python and JS SDKs against von serve
+    needs: weights
+    runs-on: macos-15
+    steps:
+      # The check expects von-rs inside a Python Von checkout.
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ inputs.python_repo }}
+          ref: ${{ inputs.python_ref }}
+          path: von
+      - uses: actions/checkout@v5
+        with:
+          path: von/von-rs
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: von/von-rs
+      - uses: actions/cache/restore@v4
+        with:
+          path: weights
+          key: ${{ needs.weights.outputs.key }}
+          fail-on-cache-miss: true
+      - uses: astral-sh/setup-uv@v6
+      - uses: oven-sh/setup-bun@v2
+      - name: Cross-SDK check
+        env:
+          VON_WEIGHTS: ${{ github.workspace }}/weights
+          VON_PY_SRC: ${{ github.workspace }}/von/src
+          SDK_JS: ${{ github.workspace }}/von/js
+        run: bash von/von-rs/tools/cross_sdk_check.sh
