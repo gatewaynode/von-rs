@@ -371,3 +371,26 @@ fn margin_confidence_matches_python() {
         );
     }
 }
+
+/// Object/array `instructions` become `json.dumps` text (keys sorted for objects);
+/// other non-strings are rejected, as pydantic does.
+#[test]
+fn structured_instructions_match_pydantic() {
+    let o = oracle();
+    for case in cases(&o, "structured_instructions") {
+        let json = case["json"].as_str().unwrap();
+        let got =
+            serde_json::from_str::<Question>(json).map(|q| serde_json::to_string(&q).unwrap());
+        match case["out"].as_str() {
+            None => assert!(got.is_err(), "expected rejection of {json}"),
+            Some(dump) => {
+                let want: Value = serde_json::from_str(dump).unwrap();
+                assert_eq!(
+                    got.unwrap_or_else(|e| panic!("{json}: {e}")),
+                    serde_json::to_string(&want).unwrap(),
+                    "{json}"
+                );
+            }
+        }
+    }
+}

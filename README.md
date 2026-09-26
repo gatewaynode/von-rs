@@ -95,7 +95,7 @@ let answer = decide(&remote, &json!("I was charged twice"), ["refund", "bug"], N
 | Variable | Meaning | Default |
 |---|---|---|
 | `VON_CHECKPOINT_DIR` | Checkpoint directory. If it is set, it must be complete: there is no fallback | unset |
-| `VON_DEVICE` | `auto`, `metal` (alias `mps`) or `cpu`. `cuda`/`rocm`/`dml` are rejected | `auto` (Metal if visible, else CPU) |
+| `VON_DEVICE` | `auto`, `metal` (alias `mps`) or `cpu`. `cuda`, `rocm`, `dml` and `openvino` are rejected | `auto` (Metal if visible, else CPU) |
 | `VON_BACKEND` | Model alias: `von-1.1`, `1.1`, `von`, `default`, `latest`, `von-latest` | `von-1.1` |
 | `HF_HOME` / `HF_HUB_CACHE` | Hub cache, shared with Python | `~/.cache/huggingface` |
 | `VON_API_KEY` (server) | Bearer token `von serve` requires on `/v1/systemone`; unset or empty disables auth | unset |

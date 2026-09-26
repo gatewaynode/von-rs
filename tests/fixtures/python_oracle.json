@@ -9482,6 +9482,200 @@
    "out": "tab\t1 2\nnew 3 4"
   }
  ],
+ "structured_instructions": [
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": \"plain text\"}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"plain text\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": \"\"}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": []}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"[]\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {\"task\": \"Does the customer want money back?\"}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{\\\"task\\\": \\\"Does the customer want money back?\\\"}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": [\"step one\", \"step two\"]}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"[\\\"step one\\\", \\\"step two\\\"]\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {\"z\": 1, \"a\": {\"y\": [3, {\"k2\": null, \"k1\": true}], \"b\": false}, \"m\": -0.0}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{\\\"a\\\": {\\\"b\\\": false, \\\"y\\\": [3, {\\\"k1\\\": true, \\\"k2\\\": null}]}, \\\"m\\\": -0.0, \\\"z\\\": 1}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": [{\"z\": 1, \"a\": 2}, [\"x\", {\"d\": 1, \"c\": 2}]]}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"[{\\\"z\\\": 1, \\\"a\\\": 2}, [\\\"x\\\", {\\\"d\\\": 1, \\\"c\\\": 2}]]\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {\"B\": 1, \"a\": 2, \"_\": 3, \"10\": 4, \"9\": 5, \"é\": 6, \"☃\": 7, \"𝄞\": 8, \"\": 9}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{\\\"\\\": 9, \\\"10\\\": 4, \\\"9\\\": 5, \\\"B\\\": 1, \\\"_\\\": 3, \\\"a\\\": 2, \\\"\\\\u00e9\\\": 6, \\\"\\\\u2603\\\": 7, \\\"\\\\ud834\\\\udd1e\\\": 8}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {\"floats\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{\\\"floats\\\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": {\"text\": \"café ☃ 𝄞 \\\"quoted\\\" \\\\ tab\\t nl\\n ctl\\u0001\"}}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"{\\\"text\\\": \\\"caf\\\\u00e9 \\\\u2603 \\\\ud834\\\\udd1e \\\\\\\"quoted\\\\\\\" \\\\\\\\ tab\\\\t nl\\\\n ctl\\\\u0001\\\\u007f\\\"}\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": [null, true, false, 0, [], {}]}",
+   "out": "{\"type\": \"noul\", \"instructions\": \"[null, true, false, 0, [], {}]\", \"criteria\": null}"
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": 5}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": 2.5}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": true}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"noul\", \"instructions\": null}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": \"plain text\", \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"plain text\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": \"\", \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": [], \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"[]\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {\"task\": \"Does the customer want money back?\"}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{\\\"task\\\": \\\"Does the customer want money back?\\\"}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": [\"step one\", \"step two\"], \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"[\\\"step one\\\", \\\"step two\\\"]\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {\"z\": 1, \"a\": {\"y\": [3, {\"k2\": null, \"k1\": true}], \"b\": false}, \"m\": -0.0}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{\\\"a\\\": {\\\"b\\\": false, \\\"y\\\": [3, {\\\"k1\\\": true, \\\"k2\\\": null}]}, \\\"m\\\": -0.0, \\\"z\\\": 1}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": [{\"z\": 1, \"a\": 2}, [\"x\", {\"d\": 1, \"c\": 2}]], \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"[{\\\"z\\\": 1, \\\"a\\\": 2}, [\\\"x\\\", {\\\"d\\\": 1, \\\"c\\\": 2}]]\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {\"B\": 1, \"a\": 2, \"_\": 3, \"10\": 4, \"9\": 5, \"é\": 6, \"☃\": 7, \"𝄞\": 8, \"\": 9}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{\\\"\\\": 9, \\\"10\\\": 4, \\\"9\\\": 5, \\\"B\\\": 1, \\\"_\\\": 3, \\\"a\\\": 2, \\\"\\\\u00e9\\\": 6, \\\"\\\\u2603\\\": 7, \\\"\\\\ud834\\\\udd1e\\\": 8}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {\"floats\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{\\\"floats\\\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": {\"text\": \"café ☃ 𝄞 \\\"quoted\\\" \\\\ tab\\t nl\\n ctl\\u0001\"}, \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"{\\\"text\\\": \\\"caf\\\\u00e9 \\\\u2603 \\\\ud834\\\\udd1e \\\\\\\"quoted\\\\\\\" \\\\\\\\ tab\\\\t nl\\\\n ctl\\\\u0001\\\\u007f\\\"}\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": [null, true, false, 0, [], {}], \"criteria\": {\"a\": null}}",
+   "out": "{\"type\": \"choice\", \"instructions\": \"[null, true, false, 0, [], {}]\", \"criteria\": {\"a\": null}}"
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": 5, \"criteria\": {\"a\": null}}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": 2.5, \"criteria\": {\"a\": null}}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": true, \"criteria\": {\"a\": null}}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"choice\", \"instructions\": null, \"criteria\": {\"a\": null}}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": \"plain text\", \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"plain text\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": \"\", \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": [], \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"[]\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {\"task\": \"Does the customer want money back?\"}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{\\\"task\\\": \\\"Does the customer want money back?\\\"}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": [\"step one\", \"step two\"], \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"[\\\"step one\\\", \\\"step two\\\"]\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {\"z\": 1, \"a\": {\"y\": [3, {\"k2\": null, \"k1\": true}], \"b\": false}, \"m\": -0.0}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{\\\"a\\\": {\\\"b\\\": false, \\\"y\\\": [3, {\\\"k1\\\": true, \\\"k2\\\": null}]}, \\\"m\\\": -0.0, \\\"z\\\": 1}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": [{\"z\": 1, \"a\": 2}, [\"x\", {\"d\": 1, \"c\": 2}]], \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"[{\\\"z\\\": 1, \\\"a\\\": 2}, [\\\"x\\\", {\\\"d\\\": 1, \\\"c\\\": 2}]]\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {\"B\": 1, \"a\": 2, \"_\": 3, \"10\": 4, \"9\": 5, \"é\": 6, \"☃\": 7, \"𝄞\": 8, \"\": 9}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{\\\"\\\": 9, \\\"10\\\": 4, \\\"9\\\": 5, \\\"B\\\": 1, \\\"_\\\": 3, \\\"a\\\": 2, \\\"\\\\u00e9\\\": 6, \\\"\\\\u2603\\\": 7, \\\"\\\\ud834\\\\udd1e\\\": 8}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {\"floats\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{\\\"floats\\\": [0.1, 1e-05, 1e+16, 1.5e+300, 3.0, 12, -7]}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": {\"text\": \"café ☃ 𝄞 \\\"quoted\\\" \\\\ tab\\t nl\\n ctl\\u0001\"}, \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"{\\\"text\\\": \\\"caf\\\\u00e9 \\\\u2603 \\\\ud834\\\\udd1e \\\\\\\"quoted\\\\\\\" \\\\\\\\ tab\\\\t nl\\\\n ctl\\\\u0001\\\\u007f\\\"}\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": [null, true, false, 0, [], {}], \"criteria\": [\"low\", \"high\"]}",
+   "out": "{\"type\": \"score\", \"instructions\": \"[null, true, false, 0, [], {}]\", \"criteria\": [\"low\", \"high\"]}"
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": 5, \"criteria\": [\"low\", \"high\"]}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": 2.5, \"criteria\": [\"low\", \"high\"]}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": true, \"criteria\": [\"low\", \"high\"]}",
+   "out": null
+  },
+  {
+   "json": "{\"type\": \"score\", \"instructions\": null, \"criteria\": [\"low\", \"high\"]}",
+   "out": null
+  }
+ ],
  "independent_flags": [
   {
    "json": "true",

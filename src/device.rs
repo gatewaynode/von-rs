@@ -66,7 +66,16 @@ mod tests {
 
     #[test]
     fn rejects_non_macos_accelerators() {
-        for d in ["cuda", "cuda:0", "rocm", "hip", "dml", "directml", "tpu"] {
+        let openvino = [
+            "openvino",
+            "ov",
+            "intel",
+            "intel_gpu",
+            "openvino:gpu",
+            "ov:cpu",
+        ];
+        let others = ["cuda", "cuda:0", "rocm", "hip", "dml", "directml", "tpu"];
+        for d in others.into_iter().chain(openvino) {
             assert!(
                 matches!(resolve_device(Some(d)), Err(VonError::UnsupportedDevice(_))),
                 "{d}"

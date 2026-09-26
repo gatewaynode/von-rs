@@ -8,7 +8,22 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
+use crate::pyjson;
 use crate::state::py_str;
+
+/// `instructions` may be an object or an array as well as a string (TypeSafe's
+/// schema allows all three). The model reads text, so structured instructions
+/// become `json.dumps(v, sort_keys=<v is an object>)`, as in Python.
+fn instructions<'de, D: Deserializer<'de>>(de: D) -> Result<String, D::Error> {
+    match Value::deserialize(de)? {
+        Value::String(s) => Ok(s),
+        v @ Value::Object(_) => Ok(pyjson::dumps(&v, true)),
+        v @ Value::Array(_) => Ok(pyjson::dumps(&v, false)),
+        other => Err(D::Error::custom(format!(
+            "instructions must be a string, object or array, got {other}"
+        ))),
+    }
+}
 
 /// A yes/no probability question.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -23,6 +38,7 @@ pub struct Noul {
 /// Pick one option from a fixed set.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Choice {
+    #[serde(deserialize_with = "instructions")]
     pub instructions: String,
     /// Option id → description. A missing description falls back to the id.
     pub criteria: IndexMap<String, Option<String>>,
@@ -31,6 +47,7 @@ pub struct Choice {
 /// A position on an ordered scale.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Score {
+    #[serde(deserialize_with = "instructions")]
     pub instructions: String,
     /// Levels from lowest (index 0) to highest.
     pub criteria: Vec<ScoreLevel>,
@@ -117,6 +134,7 @@ impl<'de> Deserialize<'de> for Question {
 /// into `criteria`, matching the upstream fix.
 #[derive(Deserialize)]
 struct NoulWire {
+    #[serde(deserialize_with = "instructions")]
     instructions: String,
     #[serde(default)]
     criteria: Option<IndexMap<String, String>>,

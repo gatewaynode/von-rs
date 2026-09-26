@@ -3,8 +3,8 @@
 Writes tests/fixtures/python_oracle.json with the exact outputs of the Python
 behaviours von-rs must reproduce: float repr, round(), str.strip(), str repr,
 _format_state, pydantic model_dump shapes, calibration map handling, the
-independent-options attention masks and position ids, split_digits, and the
-Choice/Score confidence metric.
+independent-options attention masks and position ids, split_digits, the
+Choice/Score confidence metric, and structured (object/array) instructions.
 Floats are carried as IEEE-754 bit patterns (hex) so nothing is lost in JSON.
 
 Usage (from the repo root):
@@ -314,6 +314,34 @@ def digit_cases() -> list[str]:
     ]
 
 
+def instruction_cases() -> list[dict]:
+    """Questions whose `instructions` is not a plain string, and the model_dump
+    pydantic makes of them (None when it rejects the question)."""
+    snow, clef = chr(0x2603), chr(0x1D11E)
+    values = [
+        "plain text", "", {}, [], {"task": "Does the customer want money back?"},
+        ["step one", "step two"],
+        {"z": 1, "a": {"y": [3, {"k2": None, "k1": True}], "b": False}, "m": -0.0},
+        [{"z": 1, "a": 2}, ["x", {"d": 1, "c": 2}]],
+        {"B": 1, "a": 2, "_": 3, "10": 4, "9": 5, "é": 6, snow: 7, clef: 8, "": 9},
+        {"floats": [0.1, 1e-05, 1e16, 1.5e300, 3.0, 12, -7]},
+        {"text": "café " + snow + " " + clef + ' "quoted" \\ tab\t nl\n ctl' + chr(1) + chr(0x7F)},
+        [None, True, False, 0, [], {}],
+        5, 2.5, True, None,
+    ]
+    out = []
+    for qtype, model, extra in (("noul", Noul, {}), ("choice", Choice, {"criteria": {"a": None}}),
+                                ("score", Score, {"criteria": ["low", "high"]})):
+        for v in values:
+            q = {"type": qtype, "instructions": v, **extra}
+            try:
+                dump = dumps(model(**q))
+            except ValueError:
+                dump = None
+            out.append({"json": json.dumps(q, ensure_ascii=False), "out": dump})
+    return out
+
+
 # `independent_options` values as the backend reads them: bool(cdata.get(...)).
 FLAG_CASES = ['true', 'false', 'null', '0', '1', '0.0', '2.5', '""', '"no"', '[]', '[0]', '{}', '{"a": 1}']
 
@@ -337,6 +365,7 @@ def main() -> None:
             for probs in confidence_cases()
         ],
         "split_digits": [{"s": s, "out": split_digits(s)} for s in digit_cases()],
+        "structured_instructions": instruction_cases(),
         "independent_flags": [{"json": j, "out": bool(json.loads(j))} for j in FLAG_CASES],
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
