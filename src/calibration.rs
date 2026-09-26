@@ -9,6 +9,8 @@ use std::path::Path;
 
 use serde_json::Value;
 
+use crate::model::masks::AttentionMode;
+
 /// Share of the context-free polarity prior removed in zero-shot Noul when the
 /// checkpoint ships no fitted `noul_zero_shot_prior`.
 pub const NOUL_DEBIAS: f32 = 0.7;
@@ -92,6 +94,9 @@ pub struct Calibration {
     pub temperature: f64,
     pub map: Option<CalibrationMap>,
     pub noul_prior: Option<NoulPrior>,
+    /// `independent_options`: the checkpoint was trained with each option attending
+    /// only to the premise and itself (Von 1.2+).
+    pub independent_options: bool,
 }
 
 impl Default for Calibration {
@@ -100,6 +105,7 @@ impl Default for Calibration {
             temperature: 1.0,
             map: None,
             noul_prior: None,
+            independent_options: false,
         }
     }
 }
@@ -126,11 +132,22 @@ impl Calibration {
         let noul_prior = obj
             .get("noul_zero_shot_prior")
             .and_then(NoulPrior::from_json);
+        let independent_options = obj.get("independent_options").is_some_and(py_truthy);
         Some(Calibration {
             temperature,
             map,
             noul_prior,
+            independent_options,
         })
+    }
+
+    /// The encoder attention mode the checkpoint was trained with.
+    pub fn attention_mode(&self) -> AttentionMode {
+        if self.independent_options {
+            AttentionMode::IndependentOptions
+        } else {
+            AttentionMode::Full
+        }
     }
 
     pub fn describe(&self) -> String {
@@ -200,6 +217,18 @@ pub fn softmax_f32(logits: &[f32], temperature: f64) -> Vec<f32> {
 
 /// Python `float(value)` for JSON-decoded values: numbers, bools, and numeric
 /// strings (surrounding whitespace, `inf`/`nan`, and digit-group underscores allowed).
+/// Python `bool(value)` for a JSON value.
+fn py_truthy(v: &Value) -> bool {
+    match v {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(a) => !a.is_empty(),
+        Value::Object(o) => !o.is_empty(),
+    }
+}
+
 fn py_float(v: &Value) -> Option<f64> {
     match v {
         Value::Number(n) => n.as_f64(),

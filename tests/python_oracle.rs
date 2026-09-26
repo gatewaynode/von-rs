@@ -174,7 +174,7 @@ fn effective_temperature_matches_python() {
         let calibration = Calibration {
             temperature: 2.2,
             map: c["calibrated"].as_bool().unwrap().then(|| fitted.clone()),
-            noul_prior: None,
+            ..Calibration::default()
         };
         let tokens = c["state_tokens"].as_u64().unwrap() as usize;
         let got = calibration.effective_temperature(
@@ -270,4 +270,68 @@ fn presets_match_python_model_dump() {
             "{name}"
         );
     }
+}
+
+#[test]
+fn independent_option_masks_match_python() {
+    use von::model::masks::{independent_allowed, invariant_position_ids, option_ids};
+    let o = oracle();
+    let flat = |m: &[bool]| {
+        m.iter()
+            .map(|&a| if a { '1' } else { '0' })
+            .collect::<String>()
+    };
+    for case in cases(&o, "independent_masks") {
+        let seq_len = case["seq_len"].as_u64().unwrap() as usize;
+        let masks: Vec<usize> = case["mask_positions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as usize)
+            .collect();
+        let window = case["sliding_window"].as_u64().map(|w| w as usize);
+        let positions = invariant_position_ids(&masks, seq_len);
+        let want: Vec<u32> = case["position_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as u32)
+            .collect();
+        assert_eq!(positions, want, "position ids for {case}");
+        let (full, sliding) = independent_allowed(&option_ids(&masks, seq_len), &positions, window);
+        assert_eq!(
+            flat(&full),
+            case["full"].as_str().unwrap(),
+            "full mask for {case}"
+        );
+        assert_eq!(
+            flat(&sliding),
+            case["sliding"].as_str().unwrap(),
+            "sliding mask for {case}"
+        );
+    }
+}
+
+#[test]
+fn independent_options_flag_is_python_truthiness() {
+    let o = oracle();
+    for case in cases(&o, "independent_flags") {
+        let doc: Value = serde_json::from_str(&format!(
+            "{{\"independent_options\": {}}}",
+            case["json"].as_str().unwrap()
+        ))
+        .unwrap();
+        let cal = Calibration::from_json(&doc).unwrap();
+        assert_eq!(
+            cal.independent_options,
+            case["out"].as_bool().unwrap(),
+            "independent_options = {}",
+            case["json"]
+        );
+    }
+    assert!(
+        !Calibration::from_json(&serde_json::json!({}))
+            .unwrap()
+            .independent_options
+    );
 }

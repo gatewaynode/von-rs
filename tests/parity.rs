@@ -116,7 +116,11 @@ fn logits() {
             let got = von
                 .backend()
                 .model()
-                .option_logits(pass["packed_input"].as_str().unwrap(), want.len())
+                .option_logits(
+                    pass["packed_input"].as_str().unwrap(),
+                    want.len(),
+                    von.backend().calibration().attention_mode(),
+                )
                 .unwrap();
             let delta = got
                 .iter()

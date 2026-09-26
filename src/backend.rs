@@ -189,7 +189,11 @@ impl Backend {
         descriptions: &[String],
     ) -> Result<Vec<f32>> {
         let packed = self.model.pack(state_text, instructions, descriptions);
-        self.model.option_logits(&packed, descriptions.len())
+        self.model.option_logits(
+            &packed,
+            descriptions.len(),
+            self.calibration.attention_mode(),
+        )
     }
 
     /// Calibrated probabilities, widened to f64 like torch's `.tolist()`.

@@ -1,6 +1,7 @@
 //! The option-marker decision model: ModernBERT encoder + MLP scorer
 //! (port of `models/option_marker.py`).
 
+pub mod masks;
 pub mod modernbert;
 pub mod packing;
 pub mod scorer;
@@ -13,7 +14,8 @@ use tokenizers::Tokenizer;
 
 use crate::error::{Result, VonError};
 use crate::weights::{Checkpoint, with_mapped_weights};
-use modernbert::{AttentionMasks, Config, ModernBert};
+use masks::AttentionMode;
+use modernbert::{Config, ModernBert};
 use scorer::Scorer;
 
 /// `OptionMarkerModel.__init__` overrides the checkpoint's 2048 positions with 8192.
@@ -121,7 +123,12 @@ impl OptionMarkerModel {
     }
 
     /// One forward pass over a packed sequence → one raw logit per option.
-    pub fn option_logits(&self, packed: &str, n_options: usize) -> Result<Vec<f32>> {
+    pub fn option_logits(
+        &self,
+        packed: &str,
+        n_options: usize,
+        mode: AttentionMode,
+    ) -> Result<Vec<f32>> {
         let ids = self.encode(packed)?;
         if ids.len() > MAX_TOKENS {
             return Err(VonError::InputTooLong {
@@ -147,15 +154,16 @@ impl OptionMarkerModel {
         // threads (e.g. tokio's blocking pool) never drain one, so drain per pass.
         #[cfg(feature = "metal")]
         if self.device.is_metal() {
-            return objc2::rc::autoreleasepool(|_| self.forward(&ids, &positions));
+            return objc2::rc::autoreleasepool(|_| self.forward(&ids, &positions, mode));
         }
-        self.forward(&ids, &positions)
+        self.forward(&ids, &positions, mode)
     }
 
-    fn forward(&self, ids: &[u32], positions: &[u32]) -> Result<Vec<f32>> {
+    fn forward(&self, ids: &[u32], positions: &[u32], mode: AttentionMode) -> Result<Vec<f32>> {
         let input = Tensor::new(ids, &self.device)?.unsqueeze(0)?;
-        let position_ids = Tensor::arange(0u32, ids.len() as u32, &self.device)?;
-        let masks = AttentionMasks::full(&self.config, ids.len(), &self.device)?;
+        let mask_positions: Vec<usize> = positions.iter().map(|&p| p as usize).collect();
+        let (position_ids, masks) =
+            masks::build(mode, &self.config, &mask_positions, ids.len(), &self.device)?;
         let hidden = self.encoder.forward(&input, &position_ids, &masks)?.i(0)?;
         let reps = hidden.index_select(&Tensor::new(positions, &self.device)?, 0)?;
         Ok(self.scorer.forward(&reps)?.to_vec1()?)

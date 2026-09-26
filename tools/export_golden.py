@@ -152,8 +152,10 @@ class Recorder:
             pending.append(s)
             return s
 
-        def forward(input_ids, attention_mask, mask_positions):
-            logits = orig_forward(input_ids=input_ids, attention_mask=attention_mask, mask_positions=mask_positions)
+        def forward(input_ids, attention_mask, mask_positions, **kwargs):
+            logits = orig_forward(
+                input_ids=input_ids, attention_mask=attention_mask, mask_positions=mask_positions, **kwargs
+            )
             self.passes.append({
                 "packed_input": pending.pop(0),
                 "token_ids": input_ids[0].tolist(),
@@ -185,6 +187,7 @@ def main() -> None:
         "torch": torch.__version__,
         "temperature": backend._default_temp,
         "calibration_map": backend._calib_map,
+        "independent_options": getattr(backend, "_independent_options", False),
         "cases": [],
     }
     for case_id, state, questions in HANDCRAFTED + bench_cases():

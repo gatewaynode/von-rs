@@ -2,7 +2,8 @@
 
 Writes tests/fixtures/python_oracle.json with the exact outputs of the Python
 behaviours von-rs must reproduce: float repr, round(), str.strip(), str repr,
-_format_state, pydantic model_dump shapes, and calibration map handling.
+_format_state, pydantic model_dump shapes, calibration map handling, and the
+independent-options attention masks and position ids.
 Floats are carried as IEEE-754 bit patterns (hex) so nothing is lost in JSON.
 
 Usage (from the repo root):
@@ -28,6 +29,10 @@ from von.backends.option_marker_backend import (  # noqa: E402
     _format_state,
     _validate_calibration_map,
     _validate_noul_prior,
+)
+from von.models.option_marker import (  # noqa: E402
+    build_independent_option_masks,
+    build_option_invariant_position_ids,
 )
 from von.types import (  # noqa: E402
     Choice,
@@ -225,6 +230,49 @@ def preset_dumps() -> dict:
     }
 
 
+def mask_cases() -> list[dict]:
+    """Independent-options masks and position ids on small synthetic sequences.
+
+    Each case is one unpadded sequence of `seq_len` tokens ending in [SEP], with
+    [MASK] tokens at `mask_positions`. Masks are flattened row-major (row = query)
+    as strings of 0/1.
+    """
+    import torch
+
+    rng = random.Random(7)
+    shapes = [(9, [3, 5], 2), (6, [1], None), (4, [], 1), (3, [1], 1)]
+    for _ in range(12):
+        seq_len = rng.randint(4, 24)
+        k = rng.randint(1, min(5, seq_len - 2))
+        positions = sorted(rng.sample(range(1, seq_len - 1), k))
+        shapes.append((seq_len, positions, rng.choice([None, 1, 2, 3, 5])))
+
+    def flat(mask) -> str:
+        return "".join("1" if v else "0" for v in mask.flatten().tolist())
+
+    out = []
+    for seq_len, positions, window in shapes:
+        input_ids = torch.zeros((1, seq_len), dtype=torch.long)
+        attention_mask = torch.ones((1, seq_len), dtype=torch.long)
+        pos_ids = build_option_invariant_position_ids(input_ids, attention_mask, [positions])
+        masks = build_independent_option_masks(
+            input_ids, attention_mask, [positions], pos_ids, window
+        )
+        out.append({
+            "seq_len": seq_len,
+            "mask_positions": positions,
+            "sliding_window": window,
+            "position_ids": pos_ids[0].tolist(),
+            "full": flat(masks["full_attention"][0, 0]),
+            "sliding": flat(masks["sliding_attention"][0, 0]),
+        })
+    return out
+
+
+# `independent_options` values as the backend reads them: bool(cdata.get(...)).
+FLAG_CASES = ['true', 'false', 'null', '0', '1', '0.0', '2.5', '""', '"no"', '[]', '[0]', '{}', '{"a": 1}']
+
+
 def main() -> None:
     fixture = {
         "float_repr": [{"x": bits(x), "repr": repr(x)} for x in float_cases()],
@@ -238,6 +286,8 @@ def main() -> None:
         "noul_priors": noul_prior_cases(),
         "noul_corrections": noul_correction_cases(),
         "presets": preset_dumps(),
+        "independent_masks": mask_cases(),
+        "independent_flags": [{"json": j, "out": bool(json.loads(j))} for j in FLAG_CASES],
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
