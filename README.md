@@ -96,7 +96,7 @@ let answer = decide(&remote, &json!("I was charged twice"), ["refund", "bug"], N
 |---|---|---|
 | `VON_CHECKPOINT_DIR` | Checkpoint directory. If it is set, it must be complete: there is no fallback | unset |
 | `VON_DEVICE` | `auto`, `metal` (alias `mps`) or `cpu`. `cuda`, `rocm`, `dml` and `openvino` are rejected | `auto` (Metal if visible, else CPU) |
-| `VON_BACKEND` | Model alias: `von-1.1`, `1.1`, `von`, `default`, `latest`, `von-latest` | `von-1.1` |
+| `VON_BACKEND` | Model alias: `von-1.2`, `1.2`, `von-1.1`, `1.1`, `von`, `default`, `latest`, `von-latest` | `von-1.2` |
 | `HF_HOME` / `HF_HUB_CACHE` | Hub cache, shared with Python | `~/.cache/huggingface` |
 | `VON_API_KEY` (server) | Bearer token `von serve` requires on `/v1/systemone`; unset or empty disables auth | unset |
 | `VON_CORS_ORIGINS` (server) | Comma-separated allowed origins. `*` alone allows any origin without credentials; a list enables credentials | `*` |
@@ -125,8 +125,8 @@ and a malformed line is skipped with a warning. `HF_HOME` and the Hub variables
 are read from the environment only. The library never reads the file itself;
 `von::config::Config` loads it for callers that want the same behaviour.
 
-Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-option-marker-universal`,
-`checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
+Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-1.2`,
+`checkpoints/von-option-marker-universal`, `checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
 directory), then the Hub repo `wfzyx/von`. A failed load lists every location tried.
 
 ## Tests
@@ -226,7 +226,7 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
   at a time on Metal (the CPU count on CPU); further requests queue.
 - **CLI:** stdout carries only the JSON result, and logs go to stderr (Python prints
   its load line to stdout). Unexpected failures print `Error: …` and exit 1 instead
-  of a traceback. `--version` prints `1.1.0`; Python's CLI still says `1.0.0`.
+  of a traceback. `--version` prints the package version `1.2.3`; Python's CLI still says `1.0.0`.
   `--device` accepts `auto`, `metal`/`mps` and `cpu`. `serve --reload` is accepted
   and ignored with a warning.
 - **Settings file.** The `von` binary also reads `~/.config/von/von.env` (see

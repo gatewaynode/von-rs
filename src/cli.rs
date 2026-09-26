@@ -22,8 +22,9 @@ use crate::pyfmt::py_strip;
 use crate::pyjson;
 use crate::types::{Question, ScoreLevel};
 
-/// Printed by `von --version`, in click's format. (Python prints a stale `1.0.0`.)
-pub const CLI_VERSION: &str = "1.1.0";
+/// Printed by `von --version`, in click's format: the Python package version, which
+/// `/health` reports too. (Python's CLI hardcodes a stale `1.0.0`.)
+pub const CLI_VERSION: &str = "1.2.3";
 const DECIDE_INSTRUCTIONS: &str = "Which option best describes the input?";
 
 #[derive(Parser)]
@@ -115,8 +116,8 @@ pub struct ServeArgs {
     /// Port to listen on.
     #[arg(long, default_value_t = 8000)]
     port: u16,
-    /// Von model version to load (Von 1.1 is the only model).
-    #[arg(long, default_value = "von-1.1", value_parser = sorted_aliases())]
+    /// Von model version to load (Von 1.2 is the only model).
+    #[arg(long, default_value = "von-1.2", value_parser = sorted_aliases())]
     model: String,
     /// Compute device: 'auto', 'metal' (alias 'mps') or 'cpu'.
     #[arg(long, default_value = "auto")]

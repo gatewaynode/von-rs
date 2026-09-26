@@ -22,9 +22,10 @@ pub const TOKENIZER_FILE: &str = "tokenizer.json";
 pub const TOKENIZER_CONFIG_FILE: &str = "tokenizer_config.json";
 pub const CALIBRATION_FILE: &str = "marker_calibration.json";
 
-/// Searched in order, relative to the working directory. The first two match the
+/// Searched in order, relative to the working directory. The first three match the
 /// Python runtime's defaults.
-pub const DEFAULT_CHECKPOINT_DIRS: [&str; 3] = [
+pub const DEFAULT_CHECKPOINT_DIRS: [&str; 4] = [
+    "checkpoints/von-1.2",
     "checkpoints/von-option-marker-universal",
     "checkpoints/von-option-marker",
     "checkpoints/von-1.1",
