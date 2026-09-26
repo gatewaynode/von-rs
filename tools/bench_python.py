@@ -18,7 +18,7 @@ import time
 
 import torch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+sys.path.insert(0, os.environ.get("VON_PY_SRC") or os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from von.backends.option_marker_backend import OptionMarkerBackend  # noqa: E402
