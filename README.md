@@ -5,12 +5,17 @@ System One decision model, for **macOS** (Apple Silicon Metal, or CPU with
 Accelerate). Von's Python package (`src/von/` in that repository) is the
 reference implementation, and von-rs matches it numerically: see [Parity](#parity).
 
+It runs **Von 1.2** (model id `von-1.2.0`). As in Python, the checkpoint's
+`marker_calibration.json` selects the attention mode: Von 1.2 scores each option
+independently of the others (so option order doesn't change the answer), and Von 1.1
+checkpoints still load and run in their original full-attention mode.
+
 **Status:** a complete port of the Python runtime: the inference engine, the
 `decide`/`judge`/`rate` helpers, patterns, presets, the remote client, and a
 drop-in `von` server and CLI, all verified against Python on CPU and Metal.
 It is not tuned yet: on Metal it is 1.4–1.7× slower than PyTorch MPS on short
-requests and 3.7× at about 800 tokens (see `bench/BASELINE.md` and
-`bench/RESULTS.md`). Performance
+requests and 3.7× at about 800 tokens, measured before the Von 1.2 update (see
+`bench/BASELINE.md` and `bench/RESULTS.md`). Performance
 work comes after the port is complete, followed by an async API.
 
 ## Setup
@@ -190,13 +195,23 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
 
 ## Parity
 
-| Stage | CPU (2026-09-22) | Metal (2026-09-22) |
+Von 1.2 (`tests/fixtures/golden/v1_2.json`):
+
+| Stage | CPU (2026-09-26) | Metal (2026-09-26) |
 |---|---|---|
 | Packed model input | 94/94 identical to Python | 94/94 |
 | Token ids | 94/94 identical | 94/94 |
-| Raw logits (tolerance 1e-3) | worst Δ 6.4e-5 | worst Δ 9.0e-5 |
+| Raw logits (tolerance 1e-3) | worst Δ 2.4e-5 | worst Δ 8.2e-5 |
 | Responses | 86/86 match; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
 | Over HTTP (`von serve` + Python SDK) | 86/86; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
+
+Von 1.1 regression set (`tests/fixtures/golden/v1.json`, full attention), same code:
+
+| Stage | CPU (2026-09-26) | Metal (2026-09-26) |
+|---|---|---|
+| Packed model input and token ids | 94/94 identical | 94/94 |
+| Raw logits (tolerance 1e-3) | worst Δ 6.4e-5 | worst Δ 9.0e-5 |
+| Responses | 86/86 match; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
 
 ## Differences from the Python runtime
 
@@ -237,6 +252,9 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
   of a traceback. `--version` prints the package version `1.2.3`; Python's CLI still says `1.0.0`.
   `--device` accepts `auto`, `metal`/`mps` and `cpu`. `serve --reload` is accepted
   and ignored with a warning.
+- **The Hub fallback is pinned.** Without a local checkpoint, von-rs downloads a fixed
+  commit of `wfzyx/von` (Von 1.2); Python follows the repo's main branch. The checkpoint
+  search also tries `checkpoints/von-1.1` last, after Python's own defaults.
 - **Settings file.** The `von` binary also reads `~/.config/von/von.env` (see
   [Settings file](#settings-file)); Python reads only the environment.
 
