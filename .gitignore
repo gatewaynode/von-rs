@@ -2,6 +2,9 @@
 /target
 /checkpoints
 
+# Local settings, e.g. VON_MODELS_DIR (see tools/model_paths.sh)
+/.env
+
 # Private planning and hand-off notes (kept locally, not published)
 /PRD.md
 /ARCHITECTURE.md

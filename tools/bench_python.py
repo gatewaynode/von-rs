@@ -5,6 +5,7 @@ calibration) for a few golden cases, after warmup, on each requested device.
 
 Usage (from the repo root):
     HF_HOME=.hf-cache uv run python von-rs/tools/bench_python.py --devices mps cpu
+(HF_HOME is wherever the Hub cache lives; `just models` prints it.)
 """
 
 import argparse

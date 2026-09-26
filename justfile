@@ -1,7 +1,11 @@
 # von-rs task runner. Recipes run from this directory; the scripts they call
 # find the repo root themselves.
 
-weights := "checkpoints/von-1.1"
+# Model storage: set VON_MODELS_DIR (environment, or a `VON_MODELS_DIR=/path` line in
+# the gitignored `.env`) to keep models outside the checkout. See tools/model_paths.sh.
+export VON_MODELS_DIR := `. tools/model_paths.sh && printf %s "${VON_MODELS_DIR:-}"`
+export VON_WEIGHTS := `. tools/model_paths.sh && printf %s "$VON_WEIGHTS"`
+export HF_HOME := `. tools/model_paths.sh && printf %s "$HF_HOME"`
 
 # List the recipes.
 default:
@@ -16,7 +20,7 @@ test:
 
 # Weights suite on CPU: golden parity, unsafe mapping audit, model-backed pattern/client tests.
 gate-cpu:
-    VON_WEIGHTS={{weights}} VON_DEVICE=cpu cargo test --release -- --ignored --nocapture
+    VON_DEVICE=cpu cargo test --release -- --ignored --nocapture
 
 # Metal gate (needs a GPU, so run it in a normal terminal): parity, audit, patterns and the cross-SDK check on Metal.
 gate-metal:
@@ -52,8 +56,18 @@ soak device="cpu" requests="10000":
     cargo build --release -q --bin von
     cd .. && uv run python von-rs/tools/soak.py --device {{device}} --requests {{requests}}
 
+# Show where the models live (VON_MODELS_DIR, VON_WEIGHTS, HF_HOME).
+models:
+    @echo "VON_MODELS_DIR=${VON_MODELS_DIR:-(unset: models stay in the checkout)}"
+    @echo "VON_WEIGHTS=$VON_WEIGHTS"
+    @echo "HF_HOME=$HF_HOME"
+
+# Download the Python checkpoint from the Hub into HF_HOME and convert it into VON_WEIGHTS.
+convert:
+    cd .. && uv run python von-rs/tools/convert_weights.py --out "$VON_WEIGHTS"
+
 # Regenerate the Python fixtures from the fork (the golden set also needs the model).
 fixtures:
     cd .. && VON_PY_SRC=bug-fix-fork-von/src uv run python von-rs/tools/export_pyfixtures.py
     cd .. && VON_PY_SRC=bug-fix-fork-von/src uv run python von-rs/tools/export_protocol.py
-    cd .. && VON_PY_SRC=bug-fix-fork-von/src HF_HOME=.hf-cache uv run python von-rs/tools/export_golden.py --out von-rs/tests/fixtures/golden/v1.json
+    cd .. && VON_PY_SRC=bug-fix-fork-von/src uv run python von-rs/tools/export_golden.py --out von-rs/tests/fixtures/golden/v1.json

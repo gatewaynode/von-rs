@@ -6,11 +6,11 @@
 # Run from a normal terminal:  bash von-rs/tools/metal_check.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-export HF_HOME="${HF_HOME:-$ROOT/.hf-cache}"
+. "$ROOT/von-rs/tools/model_paths.sh"  # VON_WEIGHTS, HF_HOME
 export VON_PY_SRC="${VON_PY_SRC:-$ROOT/bug-fix-fork-von/src}"
 cd "$ROOT/von-rs"
 echo "== Rust parity + unsafe audit + patterns on Metal =="
-VON_WEIGHTS=checkpoints/von-1.1 VON_DEVICE=metal \
+VON_DEVICE=metal \
   cargo test --release -q --test parity --test unsafe_audit --test patterns -- --ignored --nocapture 2>&1 \
   | grep -E 'parity device|logits:|responses:|^test |test result|panicked|FAILED'
 echo "== Cross-SDK check against von serve on Metal =="

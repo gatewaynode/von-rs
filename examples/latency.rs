@@ -22,6 +22,7 @@ const WARMUP: usize = 10;
 fn main() -> anyhow::Result<()> {
     let dir = std::env::args()
         .nth(1)
+        .or_else(|| std::env::var("VON_WEIGHTS").ok())
         .unwrap_or_else(|| "checkpoints/von-1.1".into());
     let started = Instant::now();
     let von = Von::load(LoadOptions {

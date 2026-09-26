@@ -10,6 +10,7 @@ answer assembly.
 Usage (from the repo root):
     HF_HOME=.hf-cache uv run python von-rs/tools/export_golden.py \
         --out von-rs/tests/fixtures/golden/v1.json
+(HF_HOME is wherever the Hub cache lives; `just models` prints it.)
 """
 
 import argparse

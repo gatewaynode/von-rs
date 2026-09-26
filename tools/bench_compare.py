@@ -31,6 +31,8 @@ import psutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RS = os.path.dirname(HERE)
+# Converted checkpoint; `just` and tools/model_paths.sh set VON_WEIGHTS (VON_MODELS_DIR).
+WEIGHTS = os.path.abspath(os.environ.get("VON_WEIGHTS") or os.path.join(RS, "checkpoints", "von-1.1"))
 ROOT = os.path.dirname(RS)
 
 # Same requests and iteration counts as examples/latency.rs (the long one fewer times).
@@ -181,7 +183,7 @@ def main():
               "VON_DEVICE": "mps" if args.device == "metal" else "cpu"}
     py_cmd = [sys.executable, "-c", "from von.cli import main; main()", "serve",
               "--host", "127.0.0.1", "--port", str(args.port)]
-    rs_env = {**env, "VON_DEVICE": args.device, "VON_CHECKPOINT_DIR": os.path.join(RS, "checkpoints", "von-1.1")}
+    rs_env = {**env, "VON_DEVICE": args.device, "VON_CHECKPOINT_DIR": WEIGHTS}
     rs_cmd = [args.von, "serve", "--host", "127.0.0.1", "--port", str(args.port)]
 
     import torch  # only for the version line; the server runs in its own process

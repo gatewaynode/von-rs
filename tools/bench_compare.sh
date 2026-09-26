@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RS="$ROOT/von-rs"
 DEVICE="${1:-cpu}"
-export HF_HOME="${HF_HOME:-$ROOT/.hf-cache}"
+. "$ROOT/von-rs/tools/model_paths.sh"  # VON_WEIGHTS, HF_HOME
 export VON_PY_SRC="${VON_PY_SRC:-$ROOT/bug-fix-fork-von/src}"
 
 (cd "$RS" && cargo build --release -q --bin von)

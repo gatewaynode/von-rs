@@ -13,6 +13,7 @@ pickle; it loads the directory this script writes:
 Usage (from the repo root, so the von env is used):
     uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.1
     uv run python von-rs/tools/convert_weights.py --src <local ckpt dir> --out ...
+or `just convert` from von-rs/, which writes to VON_WEIGHTS (see tools/model_paths.sh).
 """
 
 import argparse

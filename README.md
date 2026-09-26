@@ -25,6 +25,15 @@ uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.1
 
 The conversion is verified bit for bit. `checkpoints/` is gitignored.
 
+To keep models outside the checkout, set `VON_MODELS_DIR` in the environment or in a
+gitignored `von-rs/.env` (one `VON_MODELS_DIR=/path` line). The `just` recipes and
+`tools/` scripts then use `$VON_MODELS_DIR/von-1.1` for the converted checkpoint and
+`$VON_MODELS_DIR/huggingface` as `HF_HOME`, and `just convert` writes there. Without it,
+they use `checkpoints/von-1.1` and the repo root's `.hf-cache`. An explicit `VON_WEIGHTS`
+or `HF_HOME` overrides either; `just models` prints the paths in use. This only affects
+the development tools: the `von` binary and library find a checkpoint as described in
+[Configuration](#configuration), so point `VON_CHECKPOINT_DIR` at the same directory.
+
 ## Server and CLI
 
 `cargo install --path .` (or `cargo build --release`) builds the `von` binary, a
@@ -103,6 +112,9 @@ VON_WEIGHTS=checkpoints/von-1.1 cargo test --release -- --ignored --nocapture   
 VON_WEIGHTS=checkpoints/von-1.1 VON_DEVICE=metal cargo test --release -- --ignored --nocapture
 ```
 
+`just gate-cpu` and `just gate-metal` run the same suites with `VON_WEIGHTS` set from
+`VON_MODELS_DIR`.
+
 Fixtures are generated from the Python runtime by `tools/export_pyfixtures.py`
 (number and text formatting, calibration, presets), `tools/export_golden.py`
 (86 requests, 94 forward passes, on torch CPU fp32) and `tools/export_protocol.py`
@@ -120,17 +132,18 @@ bash tools/cross_sdk_check.sh                 # VON_DEVICE=metal for the GPU pat
 The Rust crate builds and tests on its own. The tools in `tools/` that talk to
 Python (weight conversion, fixture export, the cross-SDK check, the benchmarks and the soak test)
 expect this repository to be cloned as `von-rs/` inside a checkout of the Python
-Von repository, whose `uv` environment they run in. Two variables point them at
+Von repository, whose `uv` environment they run in. These variables point them at
 other sources:
 
 | Variable | Used by | Default |
 |---|---|---|
 | `VON_PY_SRC` | fixture exporters, cross-SDK check, benchmarks | the enclosing checkout's `src/` (`bug-fix-fork-von/src` for the cross-SDK check and `bench_compare.sh`) |
 | `SDK_JS` | cross-SDK check | `bug-fix-fork-von/js` next to `von-rs/` |
+| `VON_MODELS_DIR` | all recipes and scripts that load a model (see [Setup](#setup)) | unset: models stay in the checkout |
 
 The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
-`just gate-server [cpu|metal]`, `just gate-metal`, `just bench-metal` and
-`just fixtures`. For measurement:
+`just gate-server [cpu|metal]`, `just gate-metal`, `just bench-metal`,
+`just fixtures`, `just convert` and `just models`. For measurement:
 
 - `just bench [cpu|metal] [filter]`: criterion benchmarks (`benches/latency.rs`) of
   a choice, a zero-shot Noul and a 10-level score at 64, 512 and 4,096 tokens.
