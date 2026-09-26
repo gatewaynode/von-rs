@@ -4,6 +4,7 @@
 
 use serde_json::Value;
 use von::calibration::{Calibration, CalibrationMap, NoulPrior};
+use von::model::packing::split_digits;
 use von::pyfmt::{float_repr, py_strip, round, str_repr};
 use von::state::format_state;
 use von::types::{Answer, Question, SystemOneResponse};
@@ -312,26 +313,41 @@ fn independent_option_masks_match_python() {
     }
 }
 
+/// `independent_options` and `digit_split` are both read as `bool(cdata.get(key, False))`.
 #[test]
-fn independent_options_flag_is_python_truthiness() {
+fn calibration_flags_are_python_truthiness() {
     let o = oracle();
-    for case in cases(&o, "independent_flags") {
-        let doc: Value = serde_json::from_str(&format!(
-            "{{\"independent_options\": {}}}",
-            case["json"].as_str().unwrap()
-        ))
-        .unwrap();
-        let cal = Calibration::from_json(&doc).unwrap();
-        assert_eq!(
-            cal.independent_options,
-            case["out"].as_bool().unwrap(),
-            "independent_options = {}",
-            case["json"]
-        );
+    let get = |key: &str, c: &Calibration| match key {
+        "independent_options" => c.independent_options,
+        _ => c.digit_split,
+    };
+    for key in ["independent_options", "digit_split"] {
+        for case in cases(&o, "independent_flags") {
+            let doc: Value = serde_json::from_str(&format!(
+                "{{\"{key}\": {}}}",
+                case["json"].as_str().unwrap()
+            ))
+            .unwrap();
+            let cal = Calibration::from_json(&doc).unwrap();
+            assert_eq!(
+                get(key, &cal),
+                case["out"].as_bool().unwrap(),
+                "{key} = {}",
+                case["json"]
+            );
+        }
+        assert!(!get(
+            key,
+            &Calibration::from_json(&serde_json::json!({})).unwrap()
+        ));
     }
-    assert!(
-        !Calibration::from_json(&serde_json::json!({}))
-            .unwrap()
-            .independent_options
-    );
+}
+
+#[test]
+fn split_digits_matches_python() {
+    let o = oracle();
+    for case in cases(&o, "split_digits") {
+        let s = case["s"].as_str().unwrap();
+        assert_eq!(split_digits(s), case["out"].as_str().unwrap(), "{s:?}");
+    }
 }

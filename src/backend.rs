@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::calibration::{Calibration, softmax_f32};
 use crate::error::{Result, VonError};
 use crate::model::OptionMarkerModel;
+use crate::model::packing::split_digits;
 use crate::pyfmt::{py_strip, round};
 use crate::state::{format_state, py_str};
 use crate::types::{
@@ -39,8 +40,7 @@ impl Backend {
     /// for checking packing against the Python reference.
     pub fn packed_inputs(&self, state_text: &str, question: &Question) -> Result<Vec<String>> {
         let pack = |state: &str, descriptions: &[String]| {
-            self.model
-                .pack(state, question.instructions(), descriptions)
+            self.pack(state, question.instructions(), descriptions)
         };
         Ok(match question {
             Question::Choice(q) if q.criteria.is_empty() => vec![],
@@ -182,13 +182,23 @@ impl Backend {
         })
     }
 
+    /// The model input for one forward pass, digit-split when the checkpoint asks.
+    fn pack(&self, state_text: &str, instructions: &str, descriptions: &[String]) -> String {
+        let packed = self.model.pack(state_text, instructions, descriptions);
+        if self.calibration.digit_split {
+            split_digits(&packed)
+        } else {
+            packed
+        }
+    }
+
     fn option_logits(
         &self,
         state_text: &str,
         instructions: &str,
         descriptions: &[String],
     ) -> Result<Vec<f32>> {
-        let packed = self.model.pack(state_text, instructions, descriptions);
+        let packed = self.pack(state_text, instructions, descriptions);
         self.model.option_logits(
             &packed,
             descriptions.len(),

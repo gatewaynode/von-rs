@@ -6297,6 +6297,116 @@
    "sliding": "100000000111100000111110000011110000001110000100001110100001110000001110000000001"
   }
  ],
+ "split_digits": [
+  {
+   "s": "",
+   "out": ""
+  },
+  {
+   "s": "no digits here",
+   "out": "no digits here"
+  },
+  {
+   "s": "7",
+   "out": "7"
+  },
+  {
+   "s": "2026",
+   "out": "2 0 2 6"
+  },
+  {
+   "s": "a1b22c333",
+   "out": "a1b2 2c3 3 3"
+  },
+  {
+   "s": "3.14159",
+   "out": "3.1 4 1 5 9"
+  },
+  {
+   "s": "-42",
+   "out": "-4 2"
+  },
+  {
+   "s": "1,000,000",
+   "out": "1,0 0 0,0 0 0"
+  },
+  {
+   "s": "x2026y",
+   "out": "x2 0 2 6y"
+  },
+  {
+   "s": "12 34",
+   "out": "1 2 3 4"
+  },
+  {
+   "s": "007",
+   "out": "0 0 7"
+  },
+  {
+   "s": "v1.2.3",
+   "out": "v1.2.3"
+  },
+  {
+   "s": "In 2026 the fee rose from 500 to 692.",
+   "out": "In 2 0 2 6 the fee rose from 5 0 0 to 6 9 2."
+  },
+  {
+   "s": "[CLS] Q? 42 kg [SEP] [MASK] 40 kg [MASK] over 40",
+   "out": "[CLS] Q? 4 2 kg [SEP] [MASK] 4 0 kg [MASK] over 4 0"
+  },
+  {
+   "s": "Is 9 > 10? [SEP] [MASK] Yes, condition holds true. [MASK] No, condition is false.",
+   "out": "Is 9 > 1 0? [SEP] [MASK] Yes, condition holds true. [MASK] No, condition is false."
+  },
+  {
+   "s": "١٢٣",
+   "out": "١ ٢ ٣"
+  },
+  {
+   "s": "1١٢٣4",
+   "out": "1 ١ ٢ ٣ 4"
+  },
+  {
+   "s": "१२",
+   "out": "१ २"
+  },
+  {
+   "s": "１０",
+   "out": "１ ０"
+  },
+  {
+   "s": "𝟏𝟐",
+   "out": "𝟏 𝟐"
+  },
+  {
+   "s": "𞥑𞥒",
+   "out": "𞥑 𞥒"
+  },
+  {
+   "s": "𑽑𑽒",
+   "out": "𑽑 𑽒"
+  },
+  {
+   "s": "x²y",
+   "out": "x²y"
+  },
+  {
+   "s": "10²",
+   "out": "1 0²"
+  },
+  {
+   "s": "Ⅷ8",
+   "out": "Ⅷ8"
+  },
+  {
+   "s": "三3",
+   "out": "三3"
+  },
+  {
+   "s": "tab\t12\nnew 34",
+   "out": "tab\t1 2\nnew 3 4"
+  }
+ ],
  "independent_flags": [
   {
    "json": "true",

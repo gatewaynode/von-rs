@@ -2,8 +2,8 @@
 
 Writes tests/fixtures/python_oracle.json with the exact outputs of the Python
 behaviours von-rs must reproduce: float repr, round(), str.strip(), str repr,
-_format_state, pydantic model_dump shapes, calibration map handling, and the
-independent-options attention masks and position ids.
+_format_state, pydantic model_dump shapes, calibration map handling, the
+independent-options attention masks and position ids, and split_digits.
 Floats are carried as IEEE-754 bit patterns (hex) so nothing is lost in JSON.
 
 Usage (from the repo root):
@@ -33,6 +33,7 @@ from von.backends.option_marker_backend import (  # noqa: E402
 from von.models.option_marker import (  # noqa: E402
     build_independent_option_masks,
     build_option_invariant_position_ids,
+    split_digits,
 )
 from von.types import (  # noqa: E402
     Choice,
@@ -269,6 +270,31 @@ def mask_cases() -> list[dict]:
     return out
 
 
+def digit_cases() -> list[str]:
+    """Texts for split_digits: ASCII runs, separators, and Unicode decimal digits
+    (category Nd, including astral ones) next to digit-like characters that are
+    not Nd (superscripts, Roman numerals, CJK numerals), which must stay as-is.
+    Only characters from Unicode 15.0 or earlier, so any Python 3.12+ agrees."""
+    arabic_indic = "".join(chr(0x0660 + d) for d in (1, 2, 3))
+    devanagari = chr(0x0967) + chr(0x0968)
+    fullwidth = chr(0xFF11) + chr(0xFF10)
+    math_bold = chr(0x1D7CF) + chr(0x1D7D0)  # MATHEMATICAL BOLD DIGIT ONE, TWO
+    adlam = chr(0x1E951) + chr(0x1E952)
+    kawi = chr(0x11F51) + chr(0x11F52)  # Unicode 15.0
+    superscript_two = chr(0x00B2)
+    roman_eight = chr(0x2167)
+    cjk_three = chr(0x4E09)
+    return [
+        "", "no digits here", "7", "2026", "a1b22c333", "3.14159", "-42", "1,000,000",
+        "x2026y", "12 34", "007", "v1.2.3", "In 2026 the fee rose from 500 to 692.",
+        "[CLS] Q? 42 kg [SEP] [MASK] 40 kg [MASK] over 40",
+        "Is 9 > 10? [SEP] [MASK] Yes, condition holds true. [MASK] No, condition is false.",
+        arabic_indic, "1" + arabic_indic + "4", devanagari, fullwidth, math_bold, adlam, kawi,
+        "x" + superscript_two + "y", "10" + superscript_two, roman_eight + "8", cjk_three + "3",
+        "tab\t12\nnew 34",
+    ]
+
+
 # `independent_options` values as the backend reads them: bool(cdata.get(...)).
 FLAG_CASES = ['true', 'false', 'null', '0', '1', '0.0', '2.5', '""', '"no"', '[]', '[0]', '{}', '{"a": 1}']
 
@@ -287,6 +313,7 @@ def main() -> None:
         "noul_corrections": noul_correction_cases(),
         "presets": preset_dumps(),
         "independent_masks": mask_cases(),
+        "split_digits": [{"s": s, "out": split_digits(s)} for s in digit_cases()],
         "independent_flags": [{"json": j, "out": bool(json.loads(j))} for j in FLAG_CASES],
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

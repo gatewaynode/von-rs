@@ -4064,6 +4064,7 @@ dependencies = [
  "http-body-util",
  "indexmap",
  "objc2",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

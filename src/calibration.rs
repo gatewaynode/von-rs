@@ -97,6 +97,8 @@ pub struct Calibration {
     /// `independent_options`: the checkpoint was trained with each option attending
     /// only to the premise and itself (Von 1.2+).
     pub independent_options: bool,
+    /// `digit_split`: the checkpoint was trained with every digit spaced out.
+    pub digit_split: bool,
 }
 
 impl Default for Calibration {
@@ -106,6 +108,7 @@ impl Default for Calibration {
             map: None,
             noul_prior: None,
             independent_options: false,
+            digit_split: false,
         }
     }
 }
@@ -133,11 +136,13 @@ impl Calibration {
             .get("noul_zero_shot_prior")
             .and_then(NoulPrior::from_json);
         let independent_options = obj.get("independent_options").is_some_and(py_truthy);
+        let digit_split = obj.get("digit_split").is_some_and(py_truthy);
         Some(Calibration {
             temperature,
             map,
             noul_prior,
             independent_options,
+            digit_split,
         })
     }
 
