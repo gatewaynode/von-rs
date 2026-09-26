@@ -3,7 +3,8 @@
 Writes tests/fixtures/python_oracle.json with the exact outputs of the Python
 behaviours von-rs must reproduce: float repr, round(), str.strip(), str repr,
 _format_state, pydantic model_dump shapes, calibration map handling, the
-independent-options attention masks and position ids, and split_digits.
+independent-options attention masks and position ids, split_digits, and the
+Choice/Score confidence metric.
 Floats are carried as IEEE-754 bit patterns (hex) so nothing is lost in JSON.
 
 Usage (from the repo root):
@@ -27,6 +28,7 @@ sys.path.insert(0, os.environ.get("VON_PY_SRC") or os.path.join(HERE, "..", ".."
 from von.backends.option_marker_backend import (  # noqa: E402
     OptionMarkerBackend,
     _format_state,
+    _margin_confidence,
     _validate_calibration_map,
     _validate_noul_prior,
 )
@@ -270,6 +272,23 @@ def mask_cases() -> list[dict]:
     return out
 
 
+def confidence_cases() -> list[list[float]]:
+    """Probability vectors as they come out of fp32 softmax, widened to f64."""
+    rng = random.Random(16)
+    f32 = lambda x: struct.unpack("f", struct.pack("f", x))[0]  # noqa: E731
+    fixed = [[], [1.0], [0.5, 0.5], [1.0, 0.0], [0.7, 0.3], [0.286, 0.363, 0.351],
+             [1 / 3, 1 / 3, 1 / 3], [0.25] * 4, [0.2, 0.2, 0.6], [0.0, 0.0, 1.0]]
+    out = [[f32(p) for p in probs] for probs in fixed]
+    for _ in range(300):
+        n = rng.randint(2, 8)
+        logits = [rng.gauss(0, rng.choice((0.1, 1.0, 4.0))) for _ in range(n)]
+        m = max(logits)
+        exps = [f32(math.exp(x - m)) for x in logits]
+        total = sum(exps)
+        out.append([f32(e / total) for e in exps])
+    return out
+
+
 def digit_cases() -> list[str]:
     """Texts for split_digits: ASCII runs, separators, and Unicode decimal digits
     (category Nd, including astral ones) next to digit-like characters that are
@@ -313,6 +332,10 @@ def main() -> None:
         "noul_corrections": noul_correction_cases(),
         "presets": preset_dumps(),
         "independent_masks": mask_cases(),
+        "margin_confidence": [
+            {"probs": [bits(p) for p in probs], "out": bits(_margin_confidence(probs))}
+            for probs in confidence_cases()
+        ],
         "split_digits": [{"s": s, "out": split_digits(s)} for s in digit_cases()],
         "independent_flags": [{"json": j, "out": bool(json.loads(j))} for j in FLAG_CASES],
     }

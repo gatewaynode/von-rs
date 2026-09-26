@@ -3,6 +3,7 @@
 //! Needs no model weights.
 
 use serde_json::Value;
+use von::backend::margin_confidence;
 use von::calibration::{Calibration, CalibrationMap, NoulPrior};
 use von::model::packing::split_digits;
 use von::pyfmt::{float_repr, py_strip, round, str_repr};
@@ -349,5 +350,24 @@ fn split_digits_matches_python() {
     for case in cases(&o, "split_digits") {
         let s = case["s"].as_str().unwrap();
         assert_eq!(split_digits(s), case["out"].as_str().unwrap(), "{s:?}");
+    }
+}
+
+#[test]
+fn margin_confidence_matches_python() {
+    let o = oracle();
+    for case in cases(&o, "margin_confidence") {
+        let probs: Vec<f64> = case["probs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(f64_bits)
+            .collect();
+        let (got, want) = (margin_confidence(&probs), f64_bits(&case["out"]));
+        assert_eq!(
+            got.to_bits(),
+            want.to_bits(),
+            "{probs:?}: got {got}, want {want}"
+        );
     }
 }

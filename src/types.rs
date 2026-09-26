@@ -177,7 +177,7 @@ pub struct NoulAnswer {
 pub struct ChoiceAnswer {
     pub choice: String,
     pub probabilities: IndexMap<String, f64>,
-    /// Top-1 minus top-2 probability.
+    /// How far the top option sits above chance: `(n·p_max − 1)/(n − 1)`, in [0, 1].
     pub confidence: f64,
 }
 
@@ -185,6 +185,7 @@ pub struct ChoiceAnswer {
 pub struct ScoreAnswer {
     /// Probability-weighted expected level (0-indexed).
     pub score: f64,
+    /// Same measure as [`ChoiceAnswer::confidence`], over the levels.
     pub confidence: f64,
     pub legend: IndexMap<String, String>,
     pub probabilities: IndexMap<String, f64>,

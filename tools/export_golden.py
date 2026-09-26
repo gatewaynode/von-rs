@@ -177,10 +177,15 @@ class Recorder:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument(
+        "--checkpoint-dir",
+        help="local checkpoint (option_marker.pt, config, tokenizer, calibration), "
+        "e.g. a Hub cache snapshot; default: the backend's own lookup",
+    )
     args = ap.parse_args()
 
     torch.manual_seed(0)
-    backend = OptionMarkerBackend(device="cpu")
+    backend = OptionMarkerBackend(checkpoint_dir=args.checkpoint_dir, device="cpu")
     rec = Recorder(backend)
     out = {
         "device": "cpu",
