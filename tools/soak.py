@@ -30,6 +30,8 @@ import psutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RS = os.path.dirname(HERE)
+# Converted checkpoint; `just` and tools/model_paths.sh set VON_WEIGHTS (VON_MODELS_DIR).
+WEIGHTS = os.path.abspath(os.environ.get("VON_WEIGHTS") or os.path.join(RS, "checkpoints", "von-1.2"))
 KEY = f"soak-{os.getpid()}"
 GROWTH_LIMIT = 0.10  # 10% RSS growth after warm-up
 SLOPE_LIMIT = 1.0  # MB per 1,000 requests over the second half of the run
@@ -55,7 +57,7 @@ def slope_mb_per_1k(samples):
 
 
 def request_mix():
-    golden = json.load(open(os.path.join(RS, "tests", "fixtures", "golden", "v1.json")))
+    golden = json.load(open(os.path.join(RS, "tests", "fixtures", "golden", "v1_2.json")))
     ok = [(200, {"model": "von-latest", "state": c["state"], "questions": c["questions"]}, None)
           for c in golden["cases"] if not c["id"].startswith("long-")]
     q = {"q": {"type": "noul", "instructions": "Is this long?"}}
@@ -85,7 +87,7 @@ def main():
 
     base = f"http://127.0.0.1:{args.port}"
     env = {**os.environ, "VON_API_KEY": KEY, "VON_DEVICE": args.device,
-           "VON_CHECKPOINT_DIR": os.path.join(RS, "checkpoints", "von-1.1")}
+           "VON_CHECKPOINT_DIR": WEIGHTS}
     env.pop("VON_CORS_ORIGINS", None)
     proc = subprocess.Popen([args.von, "serve", "--host", "127.0.0.1", "--port", str(args.port)],
                             env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

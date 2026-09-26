@@ -7,7 +7,7 @@
 
 use std::ffi::OsString;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
@@ -15,14 +15,16 @@ use indexmap::IndexMap;
 use serde_json::{Value, json};
 
 use crate::api::{self, Choices, DEFAULT_MODEL, Decider, RATE_INSTRUCTIONS};
+use crate::config::Config;
 use crate::engine::{LoadOptions, MODEL_ALIASES, VON_MODEL_ID, VON_VERSION, Von};
 use crate::error::VonError;
 use crate::pyfmt::py_strip;
 use crate::pyjson;
 use crate::types::{Question, ScoreLevel};
 
-/// Printed by `von --version`, in click's format. (Python prints a stale `1.0.0`.)
-pub const CLI_VERSION: &str = "1.1.0";
+/// Printed by `von --version`, in click's format: the Python package version, which
+/// `/health` reports too. (Python's CLI hardcodes a stale `1.0.0`.)
+pub const CLI_VERSION: &str = "1.2.3";
 const DECIDE_INSTRUCTIONS: &str = "Which option best describes the input?";
 
 #[derive(Parser)]
@@ -114,8 +116,8 @@ pub struct ServeArgs {
     /// Port to listen on.
     #[arg(long, default_value_t = 8000)]
     port: u16,
-    /// Von model version to load (Von 1.1 is the only model).
-    #[arg(long, default_value = "von-1.1", value_parser = sorted_aliases())]
+    /// Von model version to load (Von 1.2 is the only model).
+    #[arg(long, default_value = "von-1.2", value_parser = sorted_aliases())]
     model: String,
     /// Compute device: 'auto', 'metal' (alias 'mps') or 'cpu'.
     #[arg(long, default_value = "auto")]
@@ -136,8 +138,10 @@ pub type Connect<'a> = dyn FnMut(LoadOptions) -> crate::Result<Arc<dyn Decider>>
 
 /// Runs the CLI and returns the process exit code. `connect` is called only
 /// after argument validation passes, as Python loads the engine lazily.
+/// `config` fills settings that neither the flags nor the environment give.
 pub fn run<I, T>(
     args: I,
+    config: &Config,
     connect: &mut Connect<'_>,
     out: &mut dyn Write,
     err: &mut dyn Write,
@@ -169,7 +173,8 @@ where
         let _ = write!(out, "{}", Cli::command().render_help());
         return 0;
     };
-    match execute(command, connect, out, err) {
+    let mut connect = |opts: LoadOptions| connect(fill_from(opts, config));
+    match execute(command, config, &mut connect, out, err) {
         Ok(code) => code,
         Err(e) => {
             let _ = writeln!(err, "Error: {e}");
@@ -178,14 +183,26 @@ where
     }
 }
 
+/// Fills load options that the flags left unset from the settings file, where
+/// the environment does not set them (the library reads the environment itself).
+fn fill_from(mut opts: LoadOptions, config: &Config) -> LoadOptions {
+    opts.model = opts.model.or_else(|| config.fallback("VON_BACKEND"));
+    opts.device = opts.device.or_else(|| config.fallback("VON_DEVICE"));
+    opts.checkpoint_dir = opts
+        .checkpoint_dir
+        .or_else(|| config.fallback("VON_CHECKPOINT_DIR").map(PathBuf::from));
+    opts
+}
+
 fn execute(
     command: Command,
+    config: &Config,
     connect: &mut Connect<'_>,
     out: &mut dyn Write,
     err: &mut dyn Write,
 ) -> Result<i32, VonError> {
     let output = match command {
-        Command::Serve(args) => return serve(args, out).map(|()| 0),
+        Command::Serve(args) => return serve(args, config, out).map(|()| 0),
         Command::Decide {
             text,
             choices,
@@ -345,9 +362,16 @@ fn print_error(err: &mut dyn Write, message: &str) -> Result<i32, VonError> {
 }
 
 /// `von serve`: loads the model eagerly, then serves until Ctrl-C.
-fn serve(args: ServeArgs, out: &mut dyn Write) -> Result<(), VonError> {
-    let device_flag = (args.device != "auto").then(|| args.device.clone());
-    let device = crate::device::resolve_device(device_flag.as_deref())?;
+fn serve(args: ServeArgs, config: &Config, out: &mut dyn Write) -> Result<(), VonError> {
+    let opts = fill_from(
+        LoadOptions {
+            model: Some(args.model.clone()),
+            device: (args.device != "auto").then(|| args.device.clone()),
+            ..Default::default()
+        },
+        config,
+    );
+    let device = crate::device::resolve_device(opts.device.as_deref())?;
     let _ = writeln!(
         out,
         "Starting Von Decision Server [{} on {}] on http://{}:{}",
@@ -360,17 +384,13 @@ fn serve(args: ServeArgs, out: &mut dyn Write) -> Result<(), VonError> {
         tracing::warn!("--reload is accepted for compatibility and ignored");
     }
     // Load before starting the runtime: the Hub download uses its own blocking runtime.
-    let von = Von::load(LoadOptions {
-        model: Some(args.model),
-        device: device_flag,
-        ..Default::default()
-    })?;
+    let von = Von::load(opts)?;
     let max_in_flight = if von.device().is_metal() {
         1
     } else {
         std::thread::available_parallelism().map_or(1, |n| n.get())
     };
-    let config = crate::server::ServerConfig::from_env(max_in_flight);
+    let config = crate::server::ServerConfig::from_lookup(max_in_flight, |k| config.var(k));
     let app = crate::server::router(Arc::new(von), config);
     let io = |e: std::io::Error| VonError::Io {
         path: format!("{}:{}", args.host, args.port).into(),
@@ -398,13 +418,35 @@ pub fn main() -> std::process::ExitCode {
         .with_writer(std::io::stderr)
         .with_target(false)
         .init();
+    let config = Config::load();
     let mut connect =
         |opts: LoadOptions| -> crate::Result<Arc<dyn Decider>> { Ok(Arc::new(Von::load(opts)?)) };
     let code = run(
         std::env::args_os(),
+        &config,
         &mut connect,
         &mut std::io::stdout(),
         &mut std::io::stderr(),
     );
     std::process::ExitCode::from(u8::try_from(code).unwrap_or(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flags_win_over_the_settings_file() {
+        // A key no environment sets, so the file value applies.
+        let config = Config::from_text("VON_DEVICE=metal\nVON_TEST_UNSET_KEY=x\n");
+        assert_eq!(config.fallback("VON_TEST_UNSET_KEY").as_deref(), Some("x"));
+        let opts = fill_from(
+            LoadOptions {
+                device: Some("cpu".into()),
+                ..Default::default()
+            },
+            &config,
+        );
+        assert_eq!(opts.device.as_deref(), Some("cpu"));
+    }
 }

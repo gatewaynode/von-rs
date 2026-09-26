@@ -5,7 +5,7 @@
 //!     VON_DEVICE=metal cargo bench --bench latency
 //!     VON_DEVICE=cpu cargo bench --bench latency -- /512     # one length
 //!
-//! Weights come from `VON_WEIGHTS` (default `checkpoints/von-1.1`); without
+//! Weights come from `VON_WEIGHTS` (default `checkpoints/von-1.2`); without
 //! them the benchmark prints a note and exits successfully.
 
 use std::path::PathBuf;
@@ -76,7 +76,7 @@ fn state_for(von: &Von, question: &Question, target: usize) -> (Value, usize) {
 }
 
 fn main() {
-    let dir = PathBuf::from(std::env::var("VON_WEIGHTS").unwrap_or("checkpoints/von-1.1".into()));
+    let dir = PathBuf::from(std::env::var("VON_WEIGHTS").unwrap_or("checkpoints/von-1.2".into()));
     if !dir.exists() {
         eprintln!("latency bench: no weights at {}, skipping", dir.display());
         return;

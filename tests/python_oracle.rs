@@ -3,7 +3,9 @@
 //! Needs no model weights.
 
 use serde_json::Value;
+use von::backend::margin_confidence;
 use von::calibration::{Calibration, CalibrationMap, NoulPrior};
+use von::model::packing::split_digits;
 use von::pyfmt::{float_repr, py_strip, round, str_repr};
 use von::state::format_state;
 use von::types::{Answer, Question, SystemOneResponse};
@@ -174,7 +176,7 @@ fn effective_temperature_matches_python() {
         let calibration = Calibration {
             temperature: 2.2,
             map: c["calibrated"].as_bool().unwrap().then(|| fitted.clone()),
-            noul_prior: None,
+            ..Calibration::default()
         };
         let tokens = c["state_tokens"].as_u64().unwrap() as usize;
         let got = calibration.effective_temperature(
@@ -269,5 +271,126 @@ fn presets_match_python_model_dump() {
             serde_json::to_string(&o["presets"][name]).unwrap(),
             "{name}"
         );
+    }
+}
+
+#[test]
+fn independent_option_masks_match_python() {
+    use von::model::masks::{independent_allowed, invariant_position_ids, option_ids};
+    let o = oracle();
+    let flat = |m: &[bool]| {
+        m.iter()
+            .map(|&a| if a { '1' } else { '0' })
+            .collect::<String>()
+    };
+    for case in cases(&o, "independent_masks") {
+        let seq_len = case["seq_len"].as_u64().unwrap() as usize;
+        let masks: Vec<usize> = case["mask_positions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as usize)
+            .collect();
+        let window = case["sliding_window"].as_u64().map(|w| w as usize);
+        let positions = invariant_position_ids(&masks, seq_len);
+        let want: Vec<u32> = case["position_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as u32)
+            .collect();
+        assert_eq!(positions, want, "position ids for {case}");
+        let (full, sliding) = independent_allowed(&option_ids(&masks, seq_len), &positions, window);
+        assert_eq!(
+            flat(&full),
+            case["full"].as_str().unwrap(),
+            "full mask for {case}"
+        );
+        assert_eq!(
+            flat(&sliding),
+            case["sliding"].as_str().unwrap(),
+            "sliding mask for {case}"
+        );
+    }
+}
+
+/// `independent_options` and `digit_split` are both read as `bool(cdata.get(key, False))`.
+#[test]
+fn calibration_flags_are_python_truthiness() {
+    let o = oracle();
+    let get = |key: &str, c: &Calibration| match key {
+        "independent_options" => c.independent_options,
+        _ => c.digit_split,
+    };
+    for key in ["independent_options", "digit_split"] {
+        for case in cases(&o, "independent_flags") {
+            let doc: Value = serde_json::from_str(&format!(
+                "{{\"{key}\": {}}}",
+                case["json"].as_str().unwrap()
+            ))
+            .unwrap();
+            let cal = Calibration::from_json(&doc).unwrap();
+            assert_eq!(
+                get(key, &cal),
+                case["out"].as_bool().unwrap(),
+                "{key} = {}",
+                case["json"]
+            );
+        }
+        assert!(!get(
+            key,
+            &Calibration::from_json(&serde_json::json!({})).unwrap()
+        ));
+    }
+}
+
+#[test]
+fn split_digits_matches_python() {
+    let o = oracle();
+    for case in cases(&o, "split_digits") {
+        let s = case["s"].as_str().unwrap();
+        assert_eq!(split_digits(s), case["out"].as_str().unwrap(), "{s:?}");
+    }
+}
+
+#[test]
+fn margin_confidence_matches_python() {
+    let o = oracle();
+    for case in cases(&o, "margin_confidence") {
+        let probs: Vec<f64> = case["probs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(f64_bits)
+            .collect();
+        let (got, want) = (margin_confidence(&probs), f64_bits(&case["out"]));
+        assert_eq!(
+            got.to_bits(),
+            want.to_bits(),
+            "{probs:?}: got {got}, want {want}"
+        );
+    }
+}
+
+/// Object/array `instructions` become `json.dumps` text (keys sorted for objects);
+/// other non-strings are rejected, as pydantic does.
+#[test]
+fn structured_instructions_match_pydantic() {
+    let o = oracle();
+    for case in cases(&o, "structured_instructions") {
+        let json = case["json"].as_str().unwrap();
+        let got =
+            serde_json::from_str::<Question>(json).map(|q| serde_json::to_string(&q).unwrap());
+        match case["out"].as_str() {
+            None => assert!(got.is_err(), "expected rejection of {json}"),
+            Some(dump) => {
+                let want: Value = serde_json::from_str(dump).unwrap();
+                assert_eq!(
+                    got.unwrap_or_else(|e| panic!("{json}: {e}")),
+                    serde_json::to_string(&want).unwrap(),
+                    "{json}"
+                );
+            }
+        }
     }
 }

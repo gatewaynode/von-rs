@@ -30,6 +30,8 @@ use crate::types::Question;
 
 /// Methods Starlette lists for `allow_methods=["*"]`.
 const ALL_METHODS: [&str; 7] = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"];
+/// `/health` reports the Python package version this server mirrors.
+const PYTHON_SERVER_VERSION: &str = "1.2.3";
 /// Every routed path; used for the trailing-slash redirect.
 const ROUTES: [&str; 4] = ["/", "/health", "/v1/models", "/v1/systemone"];
 
@@ -48,11 +50,14 @@ impl ServerConfig {
     /// `VON_API_KEY` (empty means unset) and `VON_CORS_ORIGINS` (default `*`).
     /// Python reads the key on every request; von-rs reads it once at startup.
     pub fn from_env(max_in_flight: usize) -> Self {
+        Self::from_lookup(max_in_flight, |k| std::env::var(k).ok())
+    }
+
+    /// Like [`ServerConfig::from_env`], reading variables through `lookup`.
+    pub fn from_lookup(max_in_flight: usize, lookup: impl Fn(&str) -> Option<String>) -> Self {
         Self {
-            api_key: std::env::var("VON_API_KEY").ok().filter(|k| !k.is_empty()),
-            cors_origins: parse_origins(
-                std::env::var("VON_CORS_ORIGINS").as_deref().unwrap_or("*"),
-            ),
+            api_key: lookup("VON_API_KEY").filter(|k| !k.is_empty()),
+            cors_origins: parse_origins(lookup("VON_CORS_ORIGINS").as_deref().unwrap_or("*")),
             max_in_flight,
         }
     }
@@ -112,8 +117,8 @@ async fn health(method: Method) -> Response {
         &json!({
             "status": "ok",
             "service": "von-decision-server",
-            "version": "1.1.0",
-            "engine": "von-1.1",
+            "version": PYTHON_SERVER_VERSION,
+            "engine": "von-1.2",
             "homage": "John von Neumann & Ludwig von Mises",
         }),
     )
@@ -124,18 +129,35 @@ async fn models(method: Method) -> Response {
         return method_not_allowed(&method, "GET");
     }
     let models = [
-        ("von-latest", "Current Von System One decision model"),
-        ("von-1.1.0", "Von 1.1 stable release"),
-        ("jev-latest", "TypeSafe Jev compatibility alias"),
+        (
+            "von-latest",
+            "Current Von System One decision model",
+            "2026-09-23",
+        ),
+        (
+            "von-1.2.0",
+            "Von 1.2 stable release (order-invariant option scoring)",
+            "2026-09-23",
+        ),
+        (
+            "von-1.1.0",
+            "Von 1.1 alias (resolves to current model)",
+            "2026-09-21",
+        ),
+        (
+            "jev-latest",
+            "TypeSafe Jev compatibility alias",
+            "2026-09-21",
+        ),
     ];
     json_response(
         StatusCode::OK,
         &json!({
-            "models": models.iter().map(|(name, description)| json!({
-                "name": name, "description": description, "release_date": "2026-09-21",
+            "models": models.iter().map(|(name, description, date)| json!({
+                "name": name, "description": description, "release_date": date,
             })).collect::<Vec<_>>(),
             "object": "list",
-            "data": models.iter().map(|(name, _)| json!({
+            "data": models.iter().map(|(name, _, _)| json!({
                 "id": name, "object": "model", "owned_by": "von",
             })).collect::<Vec<_>>(),
         }),
@@ -287,6 +309,16 @@ fn validate_request(headers: &HeaderMap, body: &[u8]) -> Result<SystemOneRequest
             None
         }
         Some(Value::Object(qs)) => {
+            // Python's `questions` validator: an empty dict is a malformed request.
+            if qs.is_empty() {
+                errors.push(json!({
+                    "type": "value_error",
+                    "loc": ["body", "questions"],
+                    "msg": "Value error, questions must contain at least one entry",
+                    "input": {},
+                    "ctx": { "error": {} },
+                }));
+            }
             for (id, q) in qs {
                 if !q.is_object() {
                     errors.push(field_error(
@@ -369,7 +401,8 @@ fn json_invalid(body: &[u8], e: &serde_json::Error) -> Value {
 }
 
 /// The Python endpoint's check: `Bearer ` prefix (case-sensitive), then the
-/// stripped token must equal the key.
+/// stripped token must equal the key (compared in constant time, like
+/// `hmac.compare_digest`).
 fn check_bearer(headers: &HeaderMap, expected: &str) -> Result<(), &'static str> {
     let auth = headers
         .get(header::AUTHORIZATION)

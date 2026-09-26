@@ -22,7 +22,8 @@ const WARMUP: usize = 10;
 fn main() -> anyhow::Result<()> {
     let dir = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "checkpoints/von-1.1".into());
+        .or_else(|| std::env::var("VON_WEIGHTS").ok())
+        .unwrap_or_else(|| "checkpoints/von-1.2".into());
     let started = Instant::now();
     let von = Von::load(LoadOptions {
         checkpoint_dir: Some(dir.into()),
@@ -36,7 +37,7 @@ fn main() -> anyhow::Result<()> {
 
     let golden: Value = serde_json::from_str(&std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/golden/v1.json"
+        "/tests/fixtures/golden/v1_2.json"
     ))?)?;
     println!("| case | p50 ms | p95 ms |\n|---|---|---|");
     for (id, iters) in CASES {

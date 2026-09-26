@@ -216,7 +216,13 @@ fn cli_matches_python() {
         let mut connect =
             |_opts: von::LoadOptions| -> von::Result<Arc<dyn Decider>> { Ok(fake.clone()) };
         let (mut out, mut err) = (Vec::new(), Vec::new());
-        let code = von::cli::run(&args, &mut connect, &mut out, &mut err);
+        let code = von::cli::run(
+            &args,
+            &von::config::Config::default(),
+            &mut connect,
+            &mut out,
+            &mut err,
+        );
         let out = String::from_utf8(out).unwrap();
         let err = String::from_utf8(err).unwrap().replace(&cli_dir, "");
 

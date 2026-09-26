@@ -7,9 +7,14 @@ effective temperature per question, and the final response. A Rust mismatch
 can then be pinned to packing, tokenization, the encoder, calibration, or
 answer assembly.
 
-Usage (from the repo root):
+The checkpoint is a local dir, normally a Hub snapshot at a pinned commit
+(tools/hub_pins.py prints one), so a golden set always names its model. Usage
+(from the repo root):
     HF_HOME=.hf-cache uv run python von-rs/tools/export_golden.py \
-        --out von-rs/tests/fixtures/golden/v1.json
+        --checkpoint-dir "$(HF_HOME=.hf-cache uv run python von-rs/tools/hub_pins.py 1.2)" \
+        --out von-rs/tests/fixtures/golden/v1_2.json
+(HF_HOME is wherever the Hub cache lives; `just models` prints it. `just fixtures`
+records both sets: 1.2 into v1_2.json, 1.1 into v1.json.)
 """
 
 import argparse
@@ -151,8 +156,10 @@ class Recorder:
             pending.append(s)
             return s
 
-        def forward(input_ids, attention_mask, mask_positions):
-            logits = orig_forward(input_ids=input_ids, attention_mask=attention_mask, mask_positions=mask_positions)
+        def forward(input_ids, attention_mask, mask_positions, **kwargs):
+            logits = orig_forward(
+                input_ids=input_ids, attention_mask=attention_mask, mask_positions=mask_positions, **kwargs
+            )
             self.passes.append({
                 "packed_input": pending.pop(0),
                 "token_ids": input_ids[0].tolist(),
@@ -174,16 +181,28 @@ class Recorder:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument(
+        "--checkpoint-dir",
+        required=True,
+        help="local checkpoint (option_marker.pt, config, tokenizer, calibration), "
+        "e.g. a Hub cache snapshot from tools/hub_pins.py",
+    )
     args = ap.parse_args()
+    # The backend falls back to the Hub's moving main branch when the dir has no weights.
+    if not os.path.isfile(os.path.join(args.checkpoint_dir, "option_marker.pt")):
+        raise SystemExit(f"no option_marker.pt in checkpoint dir {args.checkpoint_dir!r}")
 
     torch.manual_seed(0)
-    backend = OptionMarkerBackend(device="cpu")
+    backend = OptionMarkerBackend(checkpoint_dir=args.checkpoint_dir, device="cpu")
     rec = Recorder(backend)
     out = {
+        # A Hub snapshot dir is named after its commit.
+        "checkpoint": os.path.basename(os.path.realpath(args.checkpoint_dir)),
         "device": "cpu",
         "torch": torch.__version__,
         "temperature": backend._default_temp,
         "calibration_map": backend._calib_map,
+        "independent_options": getattr(backend, "_independent_options", False),
         "cases": [],
     }
     for case_id, state, questions in HANDCRAFTED + bench_cases():

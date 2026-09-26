@@ -46,7 +46,7 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -65,7 +65,7 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -104,7 +104,7 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"models\":[{\"name\":\"von-latest\",\"description\":\"Current Von System One decision model\",\"release_date\":\"2026-09-21\"},{\"name\":\"von-1.1.0\",\"description\":\"Von 1.1 stable release\",\"release_date\":\"2026-09-21\"},{\"name\":\"jev-latest\",\"description\":\"TypeSafe Jev compatibility alias\",\"release_date\":\"2026-09-21\"}],\"object\":\"list\",\"data\":[{\"id\":\"von-latest\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"von-1.1.0\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"jev-latest\",\"object\":\"model\",\"owned_by\":\"von\"}]}"
+    "body": "{\"models\":[{\"name\":\"von-latest\",\"description\":\"Current Von System One decision model\",\"release_date\":\"2026-09-23\"},{\"name\":\"von-1.2.0\",\"description\":\"Von 1.2 stable release (order-invariant option scoring)\",\"release_date\":\"2026-09-23\"},{\"name\":\"von-1.1.0\",\"description\":\"Von 1.1 alias (resolves to current model)\",\"release_date\":\"2026-09-21\"},{\"name\":\"jev-latest\",\"description\":\"TypeSafe Jev compatibility alias\",\"release_date\":\"2026-09-21\"}],\"object\":\"list\",\"data\":[{\"id\":\"von-latest\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"von-1.2.0\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"von-1.1.0\",\"object\":\"model\",\"owned_by\":\"von\"},{\"id\":\"jev-latest\",\"object\":\"model\",\"owned_by\":\"von\"}]}"
    }
   },
   {
@@ -135,7 +135,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -166,12 +167,20 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"state\": null, \"questions\": {}}"
+    "body": "{\"state\": null, \"questions\": {\"q\": {\"instructions\": \"Which?\", \"criteria\": {\"a\": null}}}}"
    },
    "engine_error": null,
    "engine_saw": {
     "state": null,
-    "questions": {},
+    "questions": {
+     "q": {
+      "type": "choice",
+      "instructions": "Which?",
+      "criteria": {
+       "a": null
+      }
+     }
+    },
     "model": "von-latest"
    },
    "response": {
@@ -179,7 +188,120 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"model\":\"von-1.1.0\",\"answers\":{},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"q\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+   }
+  },
+  {
+   "name": "empty questions",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"state\": \"x\", \"questions\": {}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"questions\"],\"msg\":\"Value error, questions must contain at least one entry\",\"input\":{},\"ctx\":{\"error\":{}}}]}"
+   }
+  },
+  {
+   "name": "empty questions and bad model",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": 1, \"state\": \"x\", \"questions\": {}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"model\"],\"msg\":\"Input should be a valid string\",\"input\":1},{\"type\":\"value_error\",\"loc\":[\"body\",\"questions\"],\"msg\":\"Value error, questions must contain at least one entry\",\"input\":{},\"ctx\":{\"error\":{}}}]}"
+   }
+  },
+  {
+   "name": "empty questions before auth",
+   "config": {
+    "key": "secret"
+   },
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"state\": \"x\", \"questions\": {}}"
+   },
+   "engine_error": null,
+   "engine_saw": null,
+   "response": {
+    "status": 422,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"detail\":[{\"type\":\"value_error\",\"loc\":[\"body\",\"questions\"],\"msg\":\"Value error, questions must contain at least one entry\",\"input\":{},\"ctx\":{\"error\":{}}}]}"
+   }
+  },
+  {
+   "name": "structured instructions",
+   "config": {},
+   "request": {
+    "method": "POST",
+    "path": "/v1/systemone",
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\": \"jev-latest\", \"state\": \"refund please\", \"questions\": {\"wants_refund\": {\"type\": \"noul\", \"instructions\": {\"task\": \"Does the customer want money back?\", \"context\": {\"tier\": \"gold\", \"amount\": 12.5}}}, \"route\": {\"type\": \"choice\", \"instructions\": [\"Pick a queue\", {\"z\": 1, \"a\": \"caf\\u00e9\"}], \"criteria\": {\"billing\": null, \"tech\": null}}, \"urgency\": {\"type\": \"score\", \"instructions\": {\"scale\": \"1-3\"}, \"criteria\": [\"low\", \"mid\", \"high\"]}}}"
+   },
+   "engine_error": null,
+   "engine_saw": {
+    "state": "refund please",
+    "questions": {
+     "wants_refund": {
+      "type": "noul",
+      "instructions": "{\"context\": {\"amount\": 12.5, \"tier\": \"gold\"}, \"task\": \"Does the customer want money back?\"}",
+      "criteria": null
+     },
+     "route": {
+      "type": "choice",
+      "instructions": "[\"Pick a queue\", {\"z\": 1, \"a\": \"caf\\u00e9\"}]",
+      "criteria": {
+       "billing": null,
+       "tech": null
+      }
+     },
+     "urgency": {
+      "type": "score",
+      "instructions": "{\"scale\": \"1-3\"}",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "response": {
+    "status": 200,
+    "headers": {
+     "content-type": "application/json"
+    },
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"wants_refund\":{\"type\":\"noul\",\"noul\":0.8125},\"route\":{\"type\":\"choice\",\"choice\":\"café\",\"probabilities\":{\"café\":0.9999,\"bar\":0.0001},\"confidence\":0.999},\"urgency\":{\"type\":\"score\",\"score\":1.0,\"confidence\":0.25,\"legend\":{\"0\":\"low\",\"1\":\"mid\",\"2\":\"high\"},\"probabilities\":{\"0\":0.1,\"1\":0.8,\"2\":0.1}}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
    }
   },
   {
@@ -210,7 +332,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -342,7 +465,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -436,12 +560,18 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"state\": \"x\", \"questions\": {}, \"stream\": true}"
+    "body": "{\"state\": \"x\", \"questions\": {\"q\": {\"type\": \"noul\", \"instructions\": \"Q?\"}}, \"stream\": true}"
    },
    "engine_error": null,
    "engine_saw": {
     "state": "x",
-    "questions": {},
+    "questions": {
+     "q": {
+      "type": "noul",
+      "instructions": "Q?",
+      "criteria": null
+     }
+    },
     "model": "von-latest"
    },
    "response": {
@@ -449,7 +579,7 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"model\":\"von-1.1.0\",\"answers\":{},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
+    "body": "{\"model\":\"von-1.1.0\",\"answers\":{\"q\":{\"type\":\"noul\",\"noul\":0.8125}},\"usage\":{\"input_tokens\":12,\"output_tokens\":0}}"
    }
   },
   {
@@ -653,7 +783,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -740,7 +871,7 @@
     "headers": {
      "content-type": "application/json"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -814,7 +945,7 @@
      "content-type": "application/json",
      "access-control-allow-origin": "*"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -837,7 +968,7 @@
      "content-type": "application/json",
      "access-control-allow-origin": "*"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -953,7 +1084,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -999,7 +1131,7 @@
      "content-type": "application/json",
      "access-control-allow-credentials": "true"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   },
   {
@@ -1052,7 +1184,7 @@
      "content-type": "application/json",
      "access-control-allow-credentials": "true"
     },
-    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.1.0\",\"engine\":\"von-1.1\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
+    "body": "{\"status\":\"ok\",\"service\":\"von-decision-server\",\"version\":\"1.2.3\",\"engine\":\"von-1.2\",\"homage\":\"John von Neumann & Ludwig von Mises\"}"
    }
   }
  ],
@@ -1331,7 +1463,8 @@
      },
      "is_payment": {
       "type": "noul",
-      "instructions": "Payment?"
+      "instructions": "Payment?",
+      "criteria": null
      },
      "severity": {
       "type": "score",
@@ -1360,6 +1493,7 @@
     "state": "x",
     "questions": {
      "q": {
+      "type": "choice",
       "instructions": "Which?",
       "criteria": {
        "a": null
@@ -1395,6 +1529,45 @@
    "exit": 1,
    "stdout": "",
    "stderr": "Error: JSON must contain 'state' and 'questions' fields.\n",
+   "exception": null
+  },
+  {
+   "name": "eval structured instructions",
+   "args": [
+    "eval",
+    "structured.json"
+   ],
+   "engine_saw": {
+    "state": "refund please",
+    "questions": {
+     "wants_refund": {
+      "type": "noul",
+      "instructions": "{\"context\": {\"amount\": 12.5, \"tier\": \"gold\"}, \"task\": \"Does the customer want money back?\"}",
+      "criteria": null
+     },
+     "route": {
+      "type": "choice",
+      "instructions": "[\"Pick a queue\", {\"z\": 1, \"a\": \"caf\\u00e9\"}]",
+      "criteria": {
+       "billing": null,
+       "tech": null
+      }
+     },
+     "urgency": {
+      "type": "score",
+      "instructions": "{\"scale\": \"1-3\"}",
+      "criteria": [
+       "low",
+       "mid",
+       "high"
+      ]
+     }
+    },
+    "model": "jev-latest"
+   },
+   "exit": 0,
+   "stdout": "{\n  \"model\": \"von-1.1.0\",\n  \"answers\": {\n    \"wants_refund\": {\n      \"type\": \"noul\",\n      \"noul\": 0.8125\n    },\n    \"route\": {\n      \"type\": \"choice\",\n      \"choice\": \"caf\\u00e9\",\n      \"probabilities\": {\n        \"caf\\u00e9\": 0.9999,\n        \"bar\": 0.0001\n      },\n      \"confidence\": 0.999\n    },\n    \"urgency\": {\n      \"type\": \"score\",\n      \"score\": 1.0,\n      \"confidence\": 0.25,\n      \"legend\": {\n        \"0\": \"low\",\n        \"1\": \"mid\",\n        \"2\": \"high\"\n      },\n      \"probabilities\": {\n        \"0\": 0.1,\n        \"1\": 0.8,\n        \"2\": 0.1\n      }\n    }\n  },\n  \"usage\": {\n    \"input_tokens\": 12,\n    \"output_tokens\": 0\n  }\n}\n",
+   "stderr": "",
    "exception": null
   },
   {

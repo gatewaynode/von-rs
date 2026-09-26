@@ -499,7 +499,7 @@ fn python_client_local_tests_on_the_model() {
         None,
     )
     .unwrap();
-    assert_eq!(res.model, "von-1.1.0");
+    assert_eq!(res.model, von::VON_MODEL_ID);
     assert!(matches!(&res.answers["action"], Answer::Choice(a) if a.choice == "cancel"));
     assert!(matches!(&res.answers["is_cancel"], Answer::Noul(a) if a.noul > 0.5));
 

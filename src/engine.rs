@@ -17,15 +17,25 @@ use crate::types::{Question, SystemOneResponse};
 use crate::weights::resolve_checkpoint;
 
 /// Von ships exactly one model, identified by version number only.
-pub const VON_VERSION: &str = "1.1";
+pub const VON_VERSION: &str = "1.2";
 /// Every response is stamped with this id, whatever alias the caller asked for.
-pub const VON_MODEL_ID: &str = "von-1.1.0";
-/// Names that resolve to the current model.
-pub const MODEL_ALIASES: [&str; 6] = ["von-1.1", "1.1", "von", "default", "latest", "von-latest"];
+pub const VON_MODEL_ID: &str = "von-1.2.0";
+/// Names that resolve to the current model. `von-1.1` stays accepted: 1.2 is the
+/// same model family retrained.
+pub const MODEL_ALIASES: [&str; 8] = [
+    "von-1.2",
+    "1.2",
+    "von-1.1",
+    "1.1",
+    "von",
+    "default",
+    "latest",
+    "von-latest",
+];
 
 #[derive(Debug, Clone, Default)]
 pub struct LoadOptions {
-    /// Model alias; defaults to `VON_BACKEND`, then `von-1.1`.
+    /// Model alias; defaults to `VON_BACKEND`, then `von-1.2`.
     pub model: Option<String>,
     /// Checkpoint dir; defaults to `VON_CHECKPOINT_DIR`, the local defaults, then the Hub.
     pub checkpoint_dir: Option<PathBuf>,
@@ -121,12 +131,12 @@ mod tests {
 
     #[test]
     fn aliases() {
-        for a in ["von-1.1", " LATEST ", "von"] {
+        for a in ["von-1.2", "1.2", "von-1.1", " LATEST ", "von"] {
             assert!(check_model_alias(a).is_ok(), "{a}");
         }
         let err = check_model_alias("von-1.0").unwrap_err().to_string();
         assert!(
-            err.contains("Unknown model 'von-1.0'") && err.contains("1.1, default, latest"),
+            err.contains("Unknown model 'von-1.0'") && err.contains("1.1, 1.2, default, latest"),
             "{err}"
         );
     }

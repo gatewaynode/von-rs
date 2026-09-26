@@ -11,7 +11,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RS="$ROOT/von-rs"
-export HF_HOME="${HF_HOME:-$ROOT/.hf-cache}"
+. "$ROOT/von-rs/tools/model_paths.sh"  # VON_WEIGHTS, HF_HOME
 export VON_PY_SRC="${VON_PY_SRC:-$ROOT/bug-fix-fork-von/src}"
 SDK_JS="${SDK_JS:-$ROOT/bug-fix-fork-von/js}"
 PORT="${PORT:-8765}"
@@ -20,7 +20,7 @@ BASE="http://127.0.0.1:$PORT"
 
 cd "$RS"
 cargo build --release -q --bin von
-VON_API_KEY="$KEY" VON_CHECKPOINT_DIR=checkpoints/von-1.1 VON_DEVICE="${VON_DEVICE:-cpu}" \
+VON_API_KEY="$KEY" VON_CHECKPOINT_DIR="$VON_WEIGHTS" VON_DEVICE="${VON_DEVICE:-cpu}" \
   target/release/von serve --host 127.0.0.1 --port "$PORT" &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null; wait $SERVER 2>/dev/null || true' EXIT

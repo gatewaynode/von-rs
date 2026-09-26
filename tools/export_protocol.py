@@ -25,7 +25,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import von.api  # noqa: E402
 import von.engine  # noqa: E402
-from von.types import SystemOneResponse  # noqa: E402
+from von.types import Choice, Noul, Score, SystemOneResponse  # noqa: E402
 
 OUT = os.path.join(HERE, "..", "tests", "fixtures", "protocol.json")
 CLI_DIR = os.path.join(HERE, "..", "tests", "fixtures", "cli")
@@ -41,6 +41,14 @@ def canned(qtype):
     return {"choice": CHOICE, "noul": NOUL, "score": SCORE}[qtype]
 
 
+def as_model(q):
+    """A raw question dict as the backend reads it (missing `type` = choice), so the
+    recording shows what pydantic made of it, e.g. structured instructions as text."""
+    if not isinstance(q, dict):
+        return q
+    return {"choice": Choice, "noul": Noul, "score": Score}[q.get("type", "choice")](**q)
+
+
 class FakeEngine:
     """Stands in for VonEngine: records the request, then answers or raises."""
 
@@ -49,7 +57,7 @@ class FakeEngine:
         self.seen = None
 
     def evaluate(self, state, questions, model=None):
-        dumped = {k: (q.model_dump() if hasattr(q, "model_dump") else q) for k, q in questions.items()}
+        dumped = {k: as_model(q).model_dump() for k, q in questions.items()}
         self.seen = {"state": state, "questions": dumped, "model": model}
         if self.error:
             raise ValueError(self.error)
@@ -71,6 +79,19 @@ VALID = {
     },
 }
 
+# TypeSafe allows object and array instructions; Python sends them to the model as JSON text.
+STRUCTURED = {
+    "model": "jev-latest",
+    "state": "refund please",
+    "questions": {
+        "wants_refund": {"type": "noul", "instructions": {"task": "Does the customer want money back?",
+                                                          "context": {"tier": "gold", "amount": 12.5}}},
+        "route": {"type": "choice", "instructions": ["Pick a queue", {"z": 1, "a": "caf\u00e9"}],
+                  "criteria": {"billing": None, "tech": None}},
+        "urgency": {"type": "score", "instructions": {"scale": "1-3"}, "criteria": ["low", "mid", "high"]},
+    },
+}
+
 
 def server_cases():
     json_hdr = {"content-type": "application/json"}
@@ -82,7 +103,14 @@ def server_cases():
         ("models", {}, "GET", "/v1/models", {}, None, None),
         ("valid", {}, "POST", "/v1/systemone", json_hdr, body(VALID), None),
         ("default model and null state", {}, "POST", "/v1/systemone", json_hdr,
-         body({"state": None, "questions": {}}), None),
+         body({"state": None, "questions": {"q": {"instructions": "Which?", "criteria": {"a": None}}}}), None),
+        ("empty questions", {}, "POST", "/v1/systemone", json_hdr,
+         body({"state": "x", "questions": {}}), None),
+        ("empty questions and bad model", {}, "POST", "/v1/systemone", json_hdr,
+         body({"model": 1, "state": "x", "questions": {}}), None),
+        ("empty questions before auth", {"key": "secret"}, "POST", "/v1/systemone", json_hdr,
+         body({"state": "x", "questions": {}}), None),
+        ("structured instructions", {}, "POST", "/v1/systemone", json_hdr, body(STRUCTURED), None),
         ("engine error", {}, "POST", "/v1/systemone", json_hdr, body(VALID), "boom: bad question"),
         ("invalid json", {}, "POST", "/v1/systemone", json_hdr, "{bad", None),
         ("empty body", {}, "POST", "/v1/systemone", json_hdr, "", None),
@@ -96,7 +124,7 @@ def server_cases():
         ("questions not a dict", {}, "POST", "/v1/systemone", json_hdr,
          body({"model": 5, "state": "x", "questions": [1]}), None),
         ("extra fields ignored", {}, "POST", "/v1/systemone", json_hdr,
-         body({"state": "x", "questions": {}, "stream": True}), None),
+         body({"state": "x", "questions": {"q": {"type": "noul", "instructions": "Q?"}}, "stream": True}), None),
         ("not found", {}, "GET", "/nope", {}, None, None),
         ("method not allowed", {}, "POST", "/health", {}, None, None),
         ("get on post route", {}, "GET", "/v1/systemone", {}, None, None),
@@ -190,6 +218,7 @@ def cli_cases():
         "no_questions.json": json.dumps({"state": "x"}),
         "null_state.json": json.dumps({"state": None, "questions": {}}),
         "bad.json": '{"state": "x",, }',
+        "structured.json": json.dumps(STRUCTURED),
     }
     for name, text in files.items():
         with open(os.path.join(CLI_DIR, name), "w", encoding="utf-8") as f:
@@ -212,6 +241,7 @@ def cli_cases():
         ("eval default model", ["eval", "default_model.json"]),
         ("eval missing questions", ["eval", "no_questions.json"]),
         ("eval null state", ["eval", "null_state.json"]),
+        ("eval structured instructions", ["eval", "structured.json"]),
         ("eval invalid json", ["eval", "bad.json"]),
         ("eval missing file", ["eval", "missing.json"]),
         ("version", ["--version"]),

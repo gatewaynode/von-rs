@@ -1,18 +1,21 @@
 //! The option-marker decision model: ModernBERT encoder + MLP scorer
 //! (port of `models/option_marker.py`).
 
+pub mod masks;
+pub mod modernbert;
 pub mod packing;
 pub mod scorer;
 
 use std::path::Path;
 
 use candle_core::{Device, IndexOp, Tensor};
-use candle_transformers::models::modernbert::{Config, ModernBert};
 use serde_json::Value;
 use tokenizers::Tokenizer;
 
 use crate::error::{Result, VonError};
 use crate::weights::{Checkpoint, with_mapped_weights};
+use masks::AttentionMode;
+use modernbert::{Config, ModernBert};
 use scorer::Scorer;
 
 /// `OptionMarkerModel.__init__` overrides the checkpoint's 2048 positions with 8192.
@@ -22,6 +25,7 @@ const SCORER_LAYER_NORM_EPS: f64 = 1e-5;
 
 pub struct OptionMarkerModel {
     encoder: ModernBert,
+    config: Config,
     scorer: Scorer,
     tokenizer: Tokenizer,
     mask_token: String,
@@ -40,7 +44,7 @@ impl OptionMarkerModel {
         })?;
 
         let (encoder, scorer) = with_mapped_weights(&ckpt.weights, device, |vb| {
-            // candle names the backbone `model.*`; the checkpoint calls it `encoder.*`.
+            // The encoder names the backbone `model.*`; the checkpoint calls it `encoder.*`.
             let encoder_vb = vb
                 .clone()
                 .rename_f(|name: &str| match name.strip_prefix("model.") {
@@ -81,6 +85,7 @@ impl OptionMarkerModel {
 
         Ok(Self {
             encoder,
+            config,
             scorer,
             tokenizer,
             mask_token,
@@ -118,7 +123,12 @@ impl OptionMarkerModel {
     }
 
     /// One forward pass over a packed sequence → one raw logit per option.
-    pub fn option_logits(&self, packed: &str, n_options: usize) -> Result<Vec<f32>> {
+    pub fn option_logits(
+        &self,
+        packed: &str,
+        n_options: usize,
+        mode: AttentionMode,
+    ) -> Result<Vec<f32>> {
         let ids = self.encode(packed)?;
         if ids.len() > MAX_TOKENS {
             return Err(VonError::InputTooLong {
@@ -144,22 +154,24 @@ impl OptionMarkerModel {
         // threads (e.g. tokio's blocking pool) never drain one, so drain per pass.
         #[cfg(feature = "metal")]
         if self.device.is_metal() {
-            return objc2::rc::autoreleasepool(|_| self.forward(&ids, &positions));
+            return objc2::rc::autoreleasepool(|_| self.forward(&ids, &positions, mode));
         }
-        self.forward(&ids, &positions)
+        self.forward(&ids, &positions, mode)
     }
 
-    fn forward(&self, ids: &[u32], positions: &[u32]) -> Result<Vec<f32>> {
+    fn forward(&self, ids: &[u32], positions: &[u32], mode: AttentionMode) -> Result<Vec<f32>> {
         let input = Tensor::new(ids, &self.device)?.unsqueeze(0)?;
-        let attention_mask = Tensor::ones_like(&input)?;
-        let hidden = self.encoder.forward(&input, &attention_mask)?.i(0)?;
+        let mask_positions: Vec<usize> = positions.iter().map(|&p| p as usize).collect();
+        let (position_ids, masks) =
+            masks::build(mode, &self.config, &mask_positions, ids.len(), &self.device)?;
+        let hidden = self.encoder.forward(&input, &position_ids, &masks)?.i(0)?;
         let reps = hidden.index_select(&Tensor::new(positions, &self.device)?, 0)?;
         Ok(self.scorer.forward(&reps)?.to_vec1()?)
     }
 }
 
 /// Von's `config.json` is in transformers-5 form (`rope_parameters`, `norm_eps`);
-/// candle wants the flat ModernBERT fields.
+/// the encoder wants the flat ModernBERT fields.
 fn encoder_config(raw: &Value) -> Result<Config, String> {
     let usize_field = |k: &str| {
         raw[k]
@@ -180,12 +192,10 @@ fn encoder_config(raw: &Value) -> Result<Config, String> {
         intermediate_size: usize_field("intermediate_size")?,
         max_position_embeddings: MAX_TOKENS,
         layer_norm_eps: raw["norm_eps"].as_f64().ok_or("missing 'norm_eps'")?,
-        pad_token_id: usize_field("pad_token_id")? as u32,
         global_attn_every_n_layers: usize_field("global_attn_every_n_layers")?,
         global_rope_theta: rope_theta("full_attention")?,
         local_attention: usize_field("local_attention")?,
         local_rope_theta: rope_theta("sliding_attention")?,
-        classifier_config: None,
     })
 }
 

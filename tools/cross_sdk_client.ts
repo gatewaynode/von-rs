@@ -24,7 +24,7 @@ const resp = await client.systemOne({
     severity: score("How severe is this?", ["Cosmetic", "Degraded", "Blocking"]),
   },
 });
-check(resp.model === "von-1.1.0", "model id", resp);
+check(resp.model === "von-1.2.0", "model id", resp);
 check(resp.answers.error_type.choice === "payment_error", "choice", resp);
 check(resp.answers.is_payment.noul > 0.5, "noul", resp);
 check(Object.keys(resp.answers.severity.legend).length === 3, "score legend", resp);

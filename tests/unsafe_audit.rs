@@ -129,7 +129,7 @@ fn static_inventory() {
 /// zero bytes, then runs inference. If any tensor still pointed into the mapping,
 /// the process would fault (SIGBUS) or the logits would change.
 ///
-///     VON_WEIGHTS=checkpoints/von-1.1 cargo test --release --test unsafe_audit -- --ignored
+///     VON_WEIGHTS=checkpoints/von-1.2 cargo test --release --test unsafe_audit -- --ignored
 #[test]
 #[ignore = "needs model weights (VON_WEIGHTS)"]
 fn mapping_is_released_after_load() {
@@ -153,7 +153,12 @@ fn mapping_is_released_after_load() {
     })
     .unwrap();
     let packed = "Is the disk full? df reports 100% on /var [SEP] [MASK] Yes [MASK] No";
-    let before = von.backend().model().option_logits(packed, 2).unwrap();
+    let mode = von.backend().calibration().attention_mode();
+    let before = von
+        .backend()
+        .model()
+        .option_logits(packed, 2, mode)
+        .unwrap();
 
     let weights = fs::OpenOptions::new()
         .write(true)
@@ -162,7 +167,11 @@ fn mapping_is_released_after_load() {
     weights.set_len(0).unwrap();
     drop(weights);
 
-    let after = von.backend().model().option_logits(packed, 2).unwrap();
+    let after = von
+        .backend()
+        .model()
+        .option_logits(packed, 2, mode)
+        .unwrap();
     assert_eq!(
         before, after,
         "logits changed after the weights file was truncated"

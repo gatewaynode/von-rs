@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::calibration::{Calibration, softmax_f32};
 use crate::error::{Result, VonError};
 use crate::model::OptionMarkerModel;
+use crate::model::packing::split_digits;
 use crate::pyfmt::{py_strip, round};
 use crate::state::{format_state, py_str};
 use crate::types::{
@@ -39,8 +40,7 @@ impl Backend {
     /// for checking packing against the Python reference.
     pub fn packed_inputs(&self, state_text: &str, question: &Question) -> Result<Vec<String>> {
         let pack = |state: &str, descriptions: &[String]| {
-            self.model
-                .pack(state, question.instructions(), descriptions)
+            self.pack(state, question.instructions(), descriptions)
         };
         Ok(match question {
             Question::Choice(q) if q.criteria.is_empty() => vec![],
@@ -182,14 +182,28 @@ impl Backend {
         })
     }
 
+    /// The model input for one forward pass, digit-split when the checkpoint asks.
+    fn pack(&self, state_text: &str, instructions: &str, descriptions: &[String]) -> String {
+        let packed = self.model.pack(state_text, instructions, descriptions);
+        if self.calibration.digit_split {
+            split_digits(&packed)
+        } else {
+            packed
+        }
+    }
+
     fn option_logits(
         &self,
         state_text: &str,
         instructions: &str,
         descriptions: &[String],
     ) -> Result<Vec<f32>> {
-        let packed = self.model.pack(state_text, instructions, descriptions);
-        self.model.option_logits(&packed, descriptions.len())
+        let packed = self.pack(state_text, instructions, descriptions);
+        self.model.option_logits(
+            &packed,
+            descriptions.len(),
+            self.calibration.attention_mode(),
+        )
     }
 
     /// Calibrated probabilities, widened to f64 like torch's `.tolist()`.
@@ -294,10 +308,15 @@ fn argmax(xs: &[f32]) -> usize {
         .fold(0, |best, (i, x)| if *x > xs[best] { i } else { best })
 }
 
-/// Top-1 minus top-2 probability, clamped to [0, 1] and rounded to 3 places.
-fn margin_confidence(probs: &[f64]) -> f64 {
-    let mut sorted = probs.to_vec();
-    sorted.sort_by(|a, b| b.total_cmp(a));
-    let second = sorted.get(1).copied().unwrap_or(0.0);
-    round((sorted[0] - second).clamp(0.0, 1.0), 3)
+/// `(n·p_max − 1)/(n − 1)`: how far the top option sits above the 1/n chance level,
+/// clamped to [0, 1] and rounded to 3 places. With one option (or none) it is 1.0.
+/// At n = 2 it equals the top-1 minus top-2 margin.
+pub fn margin_confidence(probs: &[f64]) -> f64 {
+    let n = probs.len();
+    if n <= 1 {
+        return 1.0;
+    }
+    let p_max = probs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let conf = (n as f64 * p_max - 1.0) / (n - 1) as f64;
+    round(conf.clamp(0.0, 1.0), 3)
 }

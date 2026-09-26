@@ -5,6 +5,7 @@ calibration) for a few golden cases, after warmup, on each requested device.
 
 Usage (from the repo root):
     HF_HOME=.hf-cache uv run python von-rs/tools/bench_python.py --devices mps cpu
+(HF_HOME is wherever the Hub cache lives; `just models` prints it.)
 """
 
 import argparse
@@ -23,6 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from von.backends.option_marker_backend import OptionMarkerBackend  # noqa: E402
 from export_golden import HANDCRAFTED  # noqa: E402
+from hub_pins import snapshot  # noqa: E402
 
 # Same requests and iteration counts as examples/latency.rs.
 BENCH = {"route-account-access": 100, "many-options": 100, "noul-zero-shot": 100, "score-detailed": 100,
@@ -38,14 +40,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--devices", nargs="+", default=["mps", "cpu"])
     ap.add_argument("--warmup", type=int, default=10)
+    ap.add_argument("--checkpoint-dir", help="Python checkpoint dir (default: the pinned Von 1.2 Hub snapshot)")
     args = ap.parse_args()
+    checkpoint_dir = args.checkpoint_dir or snapshot("1.2")
 
     cases = [c for c in HANDCRAFTED if c[0] in BENCH]
     chip = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip()
     print(f"# {chip} · macOS {platform.mac_ver()[0]} · torch {torch.__version__} · threads {torch.get_num_threads()}")
     results = {}
     for device in args.devices:
-        backend = OptionMarkerBackend(device=device)
+        backend = OptionMarkerBackend(checkpoint_dir=checkpoint_dir, device=device)
         backend._get_model()
         for case_id, state, questions in cases:
             for _ in range(args.warmup):

@@ -5,25 +5,69 @@ System One decision model, for **macOS** (Apple Silicon Metal, or CPU with
 Accelerate). Von's Python package (`src/von/` in that repository) is the
 reference implementation, and von-rs matches it numerically: see [Parity](#parity).
 
+It runs **Von 1.2** (model id `von-1.2.0`). As in Python, the checkpoint's
+`marker_calibration.json` selects the attention mode: Von 1.2 scores each option
+independently of the others (so option order doesn't change the answer), and Von 1.1
+checkpoints still load and run in their original full-attention mode.
+
 **Status:** a complete port of the Python runtime: the inference engine, the
 `decide`/`judge`/`rate` helpers, patterns, presets, the remote client, and a
 drop-in `von` server and CLI, all verified against Python on CPU and Metal.
 It is not tuned yet: on Metal it is 1.4–1.7× slower than PyTorch MPS on short
-requests and 3.7× at about 800 tokens (see `bench/BASELINE.md` and
-`bench/RESULTS.md`). Performance
+requests and 3.7× at about 800 tokens, measured before the Von 1.2 update (see
+`bench/BASELINE.md` and `bench/RESULTS.md`). Performance
 work comes after the port is complete, followed by an async API.
+
+## Install
+
+von-rs needs macOS on Apple Silicon. Either download `von-<version>-aarch64-apple-darwin.tar.gz`
+from the [releases](https://github.com/gatewaynode/von-rs/releases) (check it against its
+`.sha256`), or build it with a current stable Rust toolchain:
+
+```bash
+cargo install --locked --git https://github.com/gatewaynode/von-rs   # or `cargo install --locked --path .` in a checkout
+```
+
+Release binaries are not signed or notarized yet. If macOS blocks one downloaded with a
+browser, run `xattr -d com.apple.quarantine von`.
 
 ## Setup
 
 von-rs loads a converted checkpoint directory. `option_marker.safetensors` is not
-yet published to the Hugging Face repo, so create one from the Python weights
-(see [Development layout](#development-layout)), from the Von checkout's root:
+yet published to the Hugging Face repo, so create one from the Python weights with
+[uv](https://docs.astral.sh/uv/). From a von-rs checkout:
 
 ```bash
-uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.1
+uv run --no-project --with torch --with numpy --with safetensors --with huggingface_hub \
+  python tools/convert_weights.py --out ~/.local/models/von-1.2
 ```
 
-The conversion is verified bit for bit. `checkpoints/` is gitignored.
+Inside a Von checkout (see [Development layout](#development-layout)), the Von
+environment already has these packages:
+
+```bash
+uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.2
+```
+
+The conversion is verified bit for bit. `checkpoints/` is gitignored. The converter
+downloads a pinned Hub commit (`tools/hub_pins.py`), not the repo's moving main branch;
+`--revision 1.1` converts Von 1.1, which the tests use as an optional regression set.
+Point the `von` binary at the result with `VON_CHECKPOINT_DIR`, in the environment or in
+the [settings file](#settings-file).
+
+To keep models outside the checkout, set `VON_MODELS_DIR` in the environment, in the
+settings file `~/.config/von/von.env` (see [Settings file](#settings-file)), or in a
+gitignored `von-rs/.env`, in that order of precedence; in a file it is one
+`VON_MODELS_DIR=/path` line. The `just` recipes and
+`tools/` scripts then use `$VON_MODELS_DIR/von-1.2` for the converted checkpoint
+(`VON_WEIGHTS`), `$VON_MODELS_DIR/von-1.1` for the optional Von 1.1 one (`VON_WEIGHTS_V11`)
+and `$VON_MODELS_DIR/huggingface` as `HF_HOME`; `just convert` and `just convert 1.1`
+write there. Without it, they use `checkpoints/von-1.2`, `checkpoints/von-1.1` and the
+repo root's `.hf-cache`. An explicit `VON_WEIGHTS`, `VON_WEIGHTS_V11` or `HF_HOME`
+overrides these; `just models` prints the paths in use. This only affects
+the development tools: the `von` binary and library find a checkpoint as described in
+[Configuration](#configuration), so point `VON_CHECKPOINT_DIR` at the same directory
+(the settings file can hold both).
 
 ## Server and CLI
 
@@ -83,29 +127,58 @@ let answer = decide(&remote, &json!("I was charged twice"), ["refund", "bug"], N
 | Variable | Meaning | Default |
 |---|---|---|
 | `VON_CHECKPOINT_DIR` | Checkpoint directory. If it is set, it must be complete: there is no fallback | unset |
-| `VON_DEVICE` | `auto`, `metal` (alias `mps`) or `cpu`. `cuda`/`rocm`/`dml` are rejected | `auto` (Metal if visible, else CPU) |
-| `VON_BACKEND` | Model alias: `von-1.1`, `1.1`, `von`, `default`, `latest`, `von-latest` | `von-1.1` |
+| `VON_DEVICE` | `auto`, `metal` (alias `mps`) or `cpu`. `cuda`, `rocm`, `dml` and `openvino` are rejected | `auto` (Metal if visible, else CPU) |
+| `VON_BACKEND` | Model alias: `von-1.2`, `1.2`, `von-1.1`, `1.1`, `von`, `default`, `latest`, `von-latest` | `von-1.2` |
 | `HF_HOME` / `HF_HUB_CACHE` | Hub cache, shared with Python | `~/.cache/huggingface` |
 | `VON_API_KEY` (server) | Bearer token `von serve` requires on `/v1/systemone`; unset or empty disables auth | unset |
 | `VON_CORS_ORIGINS` (server) | Comma-separated allowed origins. `*` alone allows any origin without credentials; a list enables credentials | `*` |
 | `VON_BASE_URL` | `VonClient` server root | `http://localhost:8000` |
 | `VON_API_KEY`, then `TYPESAFE_API_KEY` | `VonClient` Bearer token | none |
 
-Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-option-marker-universal`,
-`checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
-directory), then the Hub repo `wfzyx/von`. A failed load lists every location tried.
+### Settings file
+
+The `von` binary also reads `VON_CHECKPOINT_DIR`, `VON_DEVICE`, `VON_BACKEND`,
+`VON_API_KEY` and `VON_CORS_ORIGINS` from `$XDG_CONFIG_HOME/von/von.env`
+(`~/.config/von/von.env` when `XDG_CONFIG_HOME` is unset). Environment variables
+and command-line flags override the file. For example:
+
+```bash
+# ~/.config/von/von.env
+# VON_MODELS_DIR is used by the dev tools only.
+VON_MODELS_DIR=~/.local/models
+VON_CHECKPOINT_DIR=~/.local/models/von-1.2
+VON_DEVICE=metal
+```
+
+One `KEY=value` per line. Blank lines and `#` lines are skipped, an `export `
+prefix and one pair of surrounding quotes are allowed, and a leading `~/` expands to
+the home directory. There are no inline comments after a value. Other keys are ignored,
+and a malformed line is skipped with a warning. `HF_HOME` and the Hub variables
+are read from the environment only. The library never reads the file itself;
+`von::config::Config` loads it for callers that want the same behaviour.
+
+Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-1.2`,
+`checkpoints/von-option-marker-universal`, `checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
+directory), then the Hub repo `wfzyx/von` at the pinned Von 1.2 commit. A failed load
+lists every location tried.
 
 ## Tests
 
 ```bash
 cargo test                                             # unit + Python-oracle + unsafe inventory; no weights needed
-VON_WEIGHTS=checkpoints/von-1.1 cargo test --release -- --ignored --nocapture   # golden parity + mapping test
-VON_WEIGHTS=checkpoints/von-1.1 VON_DEVICE=metal cargo test --release -- --ignored --nocapture
+VON_WEIGHTS=checkpoints/von-1.2 cargo test --release -- --ignored --nocapture   # golden parity + mapping test
+VON_WEIGHTS=checkpoints/von-1.2 VON_DEVICE=metal cargo test --release -- --ignored --nocapture
 ```
+
+The golden parity tests check `tests/fixtures/golden/v1_2.json` against `VON_WEIGHTS`,
+and `golden/v1.json` (Von 1.1, default attention) against `VON_WEIGHTS_V11` when that
+holds a checkpoint; they skip the 1.1 set otherwise. `just gate-cpu` and
+`just gate-metal` run the same suites with both set from `VON_MODELS_DIR`.
 
 Fixtures are generated from the Python runtime by `tools/export_pyfixtures.py`
 (number and text formatting, calibration, presets), `tools/export_golden.py`
-(86 requests, 94 forward passes, on torch CPU fp32) and `tools/export_protocol.py`
+(86 requests, 94 forward passes, on torch CPU fp32, from a Hub snapshot at a pinned
+commit) and `tools/export_protocol.py`
 (the FastAPI server's and click CLI's exact responses, with a fake engine).
 
 The end-to-end check runs the real `von serve` against the unmodified Python and JS
@@ -115,22 +188,31 @@ SDKs (needs the converted checkpoint, `uv` and `bun`):
 bash tools/cross_sdk_check.sh                 # VON_DEVICE=metal for the GPU path
 ```
 
+CI (`.github/workflows/rust.yml`) runs fmt, clippy and `cargo test` on every push and
+pull request. The weights suite and the cross-SDK check need the 1.5 GB model, so they
+run only when the workflow is started by hand ("Run workflow"); the converted checkpoint
+is cached per pinned Hub revision. GitHub's macOS runners have no usable Metal device, so CI
+tests the CPU path only; run `just gate-metal` locally for Metal. Pushing a `v*` tag
+that matches the `Cargo.toml` version runs `.github/workflows/release.yml`, which
+attaches the arm64 binary to a GitHub release.
+
 ## Development layout
 
 The Rust crate builds and tests on its own. The tools in `tools/` that talk to
 Python (weight conversion, fixture export, the cross-SDK check, the benchmarks and the soak test)
 expect this repository to be cloned as `von-rs/` inside a checkout of the Python
-Von repository, whose `uv` environment they run in. Two variables point them at
+Von repository, whose `uv` environment they run in. These variables point them at
 other sources:
 
 | Variable | Used by | Default |
 |---|---|---|
 | `VON_PY_SRC` | fixture exporters, cross-SDK check, benchmarks | the enclosing checkout's `src/` (`bug-fix-fork-von/src` for the cross-SDK check and `bench_compare.sh`) |
 | `SDK_JS` | cross-SDK check | `bug-fix-fork-von/js` next to `von-rs/` |
+| `VON_MODELS_DIR` | all recipes and scripts that load a model (see [Setup](#setup)) | unset: models stay in the checkout |
 
 The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
-`just gate-server [cpu|metal]`, `just gate-metal`, `just bench-metal` and
-`just fixtures`. For measurement:
+`just gate-server [cpu|metal]`, `just gate-metal`, `just bench-metal`,
+`just fixtures`, `just convert` and `just models`. For measurement:
 
 - `just bench [cpu|metal] [filter]`: criterion benchmarks (`benches/latency.rs`) of
   a choice, a zero-shot Noul and a 10-level score at 64, 512 and 4,096 tokens.
@@ -144,16 +226,28 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
 
 ## Parity
 
-| Stage | CPU (2026-09-22) | Metal (2026-09-22) |
+Von 1.2 (`tests/fixtures/golden/v1_2.json`):
+
+| Stage | CPU (2026-09-26) | Metal (2026-09-26) |
 |---|---|---|
 | Packed model input | 94/94 identical to Python | 94/94 |
 | Token ids | 94/94 identical | 94/94 |
-| Raw logits (tolerance 1e-3) | worst Δ 6.4e-5 | worst Δ 9.0e-5 |
+| Raw logits (tolerance 1e-3) | worst Δ 2.4e-5 | worst Δ 8.2e-5 |
 | Responses | 86/86 match; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
 | Over HTTP (`von serve` + Python SDK) | 86/86; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
 
+Von 1.1 regression set (`tests/fixtures/golden/v1.json`, full attention), same code:
+
+| Stage | CPU (2026-09-26) | Metal (2026-09-26) |
+|---|---|---|
+| Packed model input and token ids | 94/94 identical | 94/94 |
+| Raw logits (tolerance 1e-3) | worst Δ 6.4e-5 | worst Δ 9.0e-5 |
+| Responses | 86/86 match; worst probability Δ 1.0e-4 | 86/86; worst Δ 1.0e-4 |
+
 ## Differences from the Python runtime
 
+- **macOS only.** Metal or CPU (with Accelerate); there is no CUDA, ROCm or DirectML
+  backend, and `VON_DEVICE`/`--device` values for them are rejected.
 - **Loading is eager.** `Von::load` loads everything up front. Python loads on the first request.
 - **Over-length input is an error.** Inputs over 8,192 tokens (the model's trained
   context) return `InputTooLong` (HTTP 422, exit 1 in the CLI). Python runs them
@@ -188,9 +282,14 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
   at a time on Metal (the CPU count on CPU); further requests queue.
 - **CLI:** stdout carries only the JSON result, and logs go to stderr (Python prints
   its load line to stdout). Unexpected failures print `Error: …` and exit 1 instead
-  of a traceback. `--version` prints `1.1.0`; Python's CLI still says `1.0.0`.
+  of a traceback. `--version` prints the package version `1.2.3`; Python's CLI still says `1.0.0`.
   `--device` accepts `auto`, `metal`/`mps` and `cpu`. `serve --reload` is accepted
   and ignored with a warning.
+- **The Hub fallback is pinned.** Without a local checkpoint, von-rs downloads a fixed
+  commit of `wfzyx/von` (Von 1.2); Python follows the repo's main branch. The checkpoint
+  search also tries `checkpoints/von-1.1` last, after Python's own defaults.
+- **Settings file.** The `von` binary also reads `~/.config/von/von.env` (see
+  [Settings file](#settings-file)); Python reads only the environment.
 
 ## Unsafe code audit
 
@@ -254,3 +353,10 @@ Re-audit, and add a row to the log below, when any of these happen:
 | Date | candle | Change | Checked | Result |
 |---|---|---|---|---|
 | 2026-09-22 | 0.11.0 | Introduced | SAFETY invariants 1–3 read against candle source; `static_inventory` passes; `mapping_is_released_after_load` passes on CPU and Metal | Approved by project owner |
+
+## License
+
+Apache-2.0. Copyright 2026 John Warren. See `LICENSE`.
+
+von-rs is a port of [Von](https://github.com/wfzyx/von), the original Python runtime
+and model by Victor Hugo Panisa, which is also Apache-2.0.

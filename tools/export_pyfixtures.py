@@ -2,7 +2,9 @@
 
 Writes tests/fixtures/python_oracle.json with the exact outputs of the Python
 behaviours von-rs must reproduce: float repr, round(), str.strip(), str repr,
-_format_state, pydantic model_dump shapes, and calibration map handling.
+_format_state, pydantic model_dump shapes, calibration map handling, the
+independent-options attention masks and position ids, split_digits, the
+Choice/Score confidence metric, and structured (object/array) instructions.
 Floats are carried as IEEE-754 bit patterns (hex) so nothing is lost in JSON.
 
 Usage (from the repo root):
@@ -26,8 +28,14 @@ sys.path.insert(0, os.environ.get("VON_PY_SRC") or os.path.join(HERE, "..", ".."
 from von.backends.option_marker_backend import (  # noqa: E402
     OptionMarkerBackend,
     _format_state,
+    _margin_confidence,
     _validate_calibration_map,
     _validate_noul_prior,
+)
+from von.models.option_marker import (  # noqa: E402
+    build_independent_option_masks,
+    build_option_invariant_position_ids,
+    split_digits,
 )
 from von.types import (  # noqa: E402
     Choice,
@@ -225,6 +233,119 @@ def preset_dumps() -> dict:
     }
 
 
+def mask_cases() -> list[dict]:
+    """Independent-options masks and position ids on small synthetic sequences.
+
+    Each case is one unpadded sequence of `seq_len` tokens ending in [SEP], with
+    [MASK] tokens at `mask_positions`. Masks are flattened row-major (row = query)
+    as strings of 0/1.
+    """
+    import torch
+
+    rng = random.Random(7)
+    shapes = [(9, [3, 5], 2), (6, [1], None), (4, [], 1), (3, [1], 1)]
+    for _ in range(12):
+        seq_len = rng.randint(4, 24)
+        k = rng.randint(1, min(5, seq_len - 2))
+        positions = sorted(rng.sample(range(1, seq_len - 1), k))
+        shapes.append((seq_len, positions, rng.choice([None, 1, 2, 3, 5])))
+
+    def flat(mask) -> str:
+        return "".join("1" if v else "0" for v in mask.flatten().tolist())
+
+    out = []
+    for seq_len, positions, window in shapes:
+        input_ids = torch.zeros((1, seq_len), dtype=torch.long)
+        attention_mask = torch.ones((1, seq_len), dtype=torch.long)
+        pos_ids = build_option_invariant_position_ids(input_ids, attention_mask, [positions])
+        masks = build_independent_option_masks(
+            input_ids, attention_mask, [positions], pos_ids, window
+        )
+        out.append({
+            "seq_len": seq_len,
+            "mask_positions": positions,
+            "sliding_window": window,
+            "position_ids": pos_ids[0].tolist(),
+            "full": flat(masks["full_attention"][0, 0]),
+            "sliding": flat(masks["sliding_attention"][0, 0]),
+        })
+    return out
+
+
+def confidence_cases() -> list[list[float]]:
+    """Probability vectors as they come out of fp32 softmax, widened to f64."""
+    rng = random.Random(16)
+    f32 = lambda x: struct.unpack("f", struct.pack("f", x))[0]  # noqa: E731
+    fixed = [[], [1.0], [0.5, 0.5], [1.0, 0.0], [0.7, 0.3], [0.286, 0.363, 0.351],
+             [1 / 3, 1 / 3, 1 / 3], [0.25] * 4, [0.2, 0.2, 0.6], [0.0, 0.0, 1.0]]
+    out = [[f32(p) for p in probs] for probs in fixed]
+    for _ in range(300):
+        n = rng.randint(2, 8)
+        logits = [rng.gauss(0, rng.choice((0.1, 1.0, 4.0))) for _ in range(n)]
+        m = max(logits)
+        exps = [f32(math.exp(x - m)) for x in logits]
+        total = sum(exps)
+        out.append([f32(e / total) for e in exps])
+    return out
+
+
+def digit_cases() -> list[str]:
+    """Texts for split_digits: ASCII runs, separators, and Unicode decimal digits
+    (category Nd, including astral ones) next to digit-like characters that are
+    not Nd (superscripts, Roman numerals, CJK numerals), which must stay as-is.
+    Only characters from Unicode 15.0 or earlier, so any Python 3.12+ agrees."""
+    arabic_indic = "".join(chr(0x0660 + d) for d in (1, 2, 3))
+    devanagari = chr(0x0967) + chr(0x0968)
+    fullwidth = chr(0xFF11) + chr(0xFF10)
+    math_bold = chr(0x1D7CF) + chr(0x1D7D0)  # MATHEMATICAL BOLD DIGIT ONE, TWO
+    adlam = chr(0x1E951) + chr(0x1E952)
+    kawi = chr(0x11F51) + chr(0x11F52)  # Unicode 15.0
+    superscript_two = chr(0x00B2)
+    roman_eight = chr(0x2167)
+    cjk_three = chr(0x4E09)
+    return [
+        "", "no digits here", "7", "2026", "a1b22c333", "3.14159", "-42", "1,000,000",
+        "x2026y", "12 34", "007", "v1.2.3", "In 2026 the fee rose from 500 to 692.",
+        "[CLS] Q? 42 kg [SEP] [MASK] 40 kg [MASK] over 40",
+        "Is 9 > 10? [SEP] [MASK] Yes, condition holds true. [MASK] No, condition is false.",
+        arabic_indic, "1" + arabic_indic + "4", devanagari, fullwidth, math_bold, adlam, kawi,
+        "x" + superscript_two + "y", "10" + superscript_two, roman_eight + "8", cjk_three + "3",
+        "tab\t12\nnew 34",
+    ]
+
+
+def instruction_cases() -> list[dict]:
+    """Questions whose `instructions` is not a plain string, and the model_dump
+    pydantic makes of them (None when it rejects the question)."""
+    snow, clef = chr(0x2603), chr(0x1D11E)
+    values = [
+        "plain text", "", {}, [], {"task": "Does the customer want money back?"},
+        ["step one", "step two"],
+        {"z": 1, "a": {"y": [3, {"k2": None, "k1": True}], "b": False}, "m": -0.0},
+        [{"z": 1, "a": 2}, ["x", {"d": 1, "c": 2}]],
+        {"B": 1, "a": 2, "_": 3, "10": 4, "9": 5, "é": 6, snow: 7, clef: 8, "": 9},
+        {"floats": [0.1, 1e-05, 1e16, 1.5e300, 3.0, 12, -7]},
+        {"text": "café " + snow + " " + clef + ' "quoted" \\ tab\t nl\n ctl' + chr(1) + chr(0x7F)},
+        [None, True, False, 0, [], {}],
+        5, 2.5, True, None,
+    ]
+    out = []
+    for qtype, model, extra in (("noul", Noul, {}), ("choice", Choice, {"criteria": {"a": None}}),
+                                ("score", Score, {"criteria": ["low", "high"]})):
+        for v in values:
+            q = {"type": qtype, "instructions": v, **extra}
+            try:
+                dump = dumps(model(**q))
+            except ValueError:
+                dump = None
+            out.append({"json": json.dumps(q, ensure_ascii=False), "out": dump})
+    return out
+
+
+# `independent_options` values as the backend reads them: bool(cdata.get(...)).
+FLAG_CASES = ['true', 'false', 'null', '0', '1', '0.0', '2.5', '""', '"no"', '[]', '[0]', '{}', '{"a": 1}']
+
+
 def main() -> None:
     fixture = {
         "float_repr": [{"x": bits(x), "repr": repr(x)} for x in float_cases()],
@@ -238,6 +359,14 @@ def main() -> None:
         "noul_priors": noul_prior_cases(),
         "noul_corrections": noul_correction_cases(),
         "presets": preset_dumps(),
+        "independent_masks": mask_cases(),
+        "margin_confidence": [
+            {"probs": [bits(p) for p in probs], "out": bits(_margin_confidence(probs))}
+            for probs in confidence_cases()
+        ],
+        "split_digits": [{"s": s, "out": split_digits(s)} for s in digit_cases()],
+        "structured_instructions": instruction_cases(),
+        "independent_flags": [{"json": j, "out": bool(json.loads(j))} for j in FLAG_CASES],
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
