@@ -1,6 +1,6 @@
 """Protocol-parity check, client side: drives a running `von serve` with the unmodified Python SDK.
 
-1. Every golden request (tests/fixtures/golden/v1.json) goes through
+1. Every golden request (tests/fixtures/golden/v1_2.json) goes through
    `VonClient(local=False)`; answers must match the Python engine's recorded
    responses within the parity tolerances (probabilities 2e-3, score 1e-2).
 2. Ports of the Python server/client tests (test_server.py, test_client.py) run
@@ -63,7 +63,7 @@ def main():
     failures = []
 
     # 1. Golden parity over HTTP through the Python SDK.
-    golden = json.load(open(os.path.join(HERE, "..", "tests", "fixtures", "golden", "v1.json")))
+    golden = json.load(open(os.path.join(HERE, "..", "tests", "fixtures", "golden", "v1_2.json")))
     client = VonClient(base_url=base, api_key=key, local=False)
     worst = 0.0
     for case in golden["cases"]:
@@ -76,7 +76,7 @@ def main():
     r = httpx.get(f"{base}/health")
     assert r.status_code == 200 and r.json()["status"] == "ok" and "version" in r.json(), r.text
     ids = [m["id"] for m in httpx.get(f"{base}/v1/models").json()["data"]]
-    assert "von-latest" in ids and "von-1.1.0" in ids, ids
+    assert "von-latest" in ids and "von-1.2.0" in ids and "von-1.1.0" in ids, ids
     payload = {
         "model": "von-latest",
         "state": "The user clicked the checkout button but received a credit card decline error.",
@@ -90,7 +90,7 @@ def main():
     r = httpx.post(f"{base}/v1/systemone", json=payload, headers=h)
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["model"] == "von-1.1.0" and data["answers"]["error_type"]["choice"] == "payment_error", data
+    assert data["model"] == "von-1.2.0" and data["answers"]["error_type"]["choice"] == "payment_error", data
     assert data["answers"]["is_payment"]["noul"] > 0.5, data
     assert httpx.post(f"{base}/v1/systemone", json=payload).status_code == 401
     assert httpx.post(f"{base}/v1/systemone", json=payload,
@@ -108,7 +108,7 @@ def main():
             "is_cancel": noul("Does the user want to cancel?"),
         },
     )
-    assert res.model == "von-1.1.0" and res.answers["action"].choice == "cancel", res
+    assert res.model == "von-1.2.0" and res.answers["action"].choice == "cancel", res
     assert res.answers["is_cancel"].noul > 0.5, res
     res = client.system_one(
         state="Error: Connection refused on port 5432.",

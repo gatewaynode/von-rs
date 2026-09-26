@@ -20,19 +20,23 @@ yet published to the Hugging Face repo, so create one from the Python weights
 (see [Development layout](#development-layout)), from the Von checkout's root:
 
 ```bash
-uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.1
+uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.2
 ```
 
-The conversion is verified bit for bit. `checkpoints/` is gitignored.
+The conversion is verified bit for bit. `checkpoints/` is gitignored. The converter
+downloads a pinned Hub commit (`tools/hub_pins.py`), not the repo's moving main branch;
+`--revision 1.1` converts Von 1.1, which the tests use as an optional regression set.
 
 To keep models outside the checkout, set `VON_MODELS_DIR` in the environment, in the
 settings file `~/.config/von/von.env` (see [Settings file](#settings-file)), or in a
 gitignored `von-rs/.env`, in that order of precedence; in a file it is one
 `VON_MODELS_DIR=/path` line. The `just` recipes and
-`tools/` scripts then use `$VON_MODELS_DIR/von-1.1` for the converted checkpoint and
-`$VON_MODELS_DIR/huggingface` as `HF_HOME`, and `just convert` writes there. Without it,
-they use `checkpoints/von-1.1` and the repo root's `.hf-cache`. An explicit `VON_WEIGHTS`
-or `HF_HOME` overrides either; `just models` prints the paths in use. This only affects
+`tools/` scripts then use `$VON_MODELS_DIR/von-1.2` for the converted checkpoint
+(`VON_WEIGHTS`), `$VON_MODELS_DIR/von-1.1` for the optional Von 1.1 one (`VON_WEIGHTS_V11`)
+and `$VON_MODELS_DIR/huggingface` as `HF_HOME`; `just convert` and `just convert 1.1`
+write there. Without it, they use `checkpoints/von-1.2`, `checkpoints/von-1.1` and the
+repo root's `.hf-cache`. An explicit `VON_WEIGHTS`, `VON_WEIGHTS_V11` or `HF_HOME`
+overrides these; `just models` prints the paths in use. This only affects
 the development tools: the `von` binary and library find a checkpoint as described in
 [Configuration](#configuration), so point `VON_CHECKPOINT_DIR` at the same directory
 (the settings file can hold both).
@@ -114,7 +118,7 @@ and command-line flags override the file. For example:
 # ~/.config/von/von.env
 # VON_MODELS_DIR is used by the dev tools only.
 VON_MODELS_DIR=~/.local/models
-VON_CHECKPOINT_DIR=~/.local/models/von-1.1
+VON_CHECKPOINT_DIR=~/.local/models/von-1.2
 VON_DEVICE=metal
 ```
 
@@ -127,22 +131,26 @@ are read from the environment only. The library never reads the file itself;
 
 Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-1.2`,
 `checkpoints/von-option-marker-universal`, `checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
-directory), then the Hub repo `wfzyx/von`. A failed load lists every location tried.
+directory), then the Hub repo `wfzyx/von` at the pinned Von 1.2 commit. A failed load
+lists every location tried.
 
 ## Tests
 
 ```bash
 cargo test                                             # unit + Python-oracle + unsafe inventory; no weights needed
-VON_WEIGHTS=checkpoints/von-1.1 cargo test --release -- --ignored --nocapture   # golden parity + mapping test
-VON_WEIGHTS=checkpoints/von-1.1 VON_DEVICE=metal cargo test --release -- --ignored --nocapture
+VON_WEIGHTS=checkpoints/von-1.2 cargo test --release -- --ignored --nocapture   # golden parity + mapping test
+VON_WEIGHTS=checkpoints/von-1.2 VON_DEVICE=metal cargo test --release -- --ignored --nocapture
 ```
 
-`just gate-cpu` and `just gate-metal` run the same suites with `VON_WEIGHTS` set from
-`VON_MODELS_DIR`.
+The golden parity tests check `tests/fixtures/golden/v1_2.json` against `VON_WEIGHTS`,
+and `golden/v1.json` (Von 1.1, default attention) against `VON_WEIGHTS_V11` when that
+holds a checkpoint; they skip the 1.1 set otherwise. `just gate-cpu` and
+`just gate-metal` run the same suites with both set from `VON_MODELS_DIR`.
 
 Fixtures are generated from the Python runtime by `tools/export_pyfixtures.py`
 (number and text formatting, calibration, presets), `tools/export_golden.py`
-(86 requests, 94 forward passes, on torch CPU fp32) and `tools/export_protocol.py`
+(86 requests, 94 forward passes, on torch CPU fp32, from a Hub snapshot at a pinned
+commit) and `tools/export_protocol.py`
 (the FastAPI server's and click CLI's exact responses, with a fake engine).
 
 The end-to-end check runs the real `von serve` against the unmodified Python and JS

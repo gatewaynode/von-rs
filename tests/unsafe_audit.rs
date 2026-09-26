@@ -129,7 +129,7 @@ fn static_inventory() {
 /// zero bytes, then runs inference. If any tensor still pointed into the mapping,
 /// the process would fault (SIGBUS) or the logits would change.
 ///
-///     VON_WEIGHTS=checkpoints/von-1.1 cargo test --release --test unsafe_audit -- --ignored
+///     VON_WEIGHTS=checkpoints/von-1.2 cargo test --release --test unsafe_audit -- --ignored
 #[test]
 #[ignore = "needs model weights (VON_WEIGHTS)"]
 fn mapping_is_released_after_load() {

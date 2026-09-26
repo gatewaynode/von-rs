@@ -16,6 +16,9 @@ use candle_nn::VarBuilder;
 use crate::error::{Result, VonError};
 
 pub const HF_REPO: &str = "wfzyx/von";
+/// The Hub commit holding Von 1.2. The repo's main branch moves when a new model
+/// ships, so downloads are pinned to the model this crate implements.
+pub const HF_REVISION: &str = "5df8185a4f2327ad0a7cd117cc4f701ac557b9ae";
 pub const WEIGHTS_FILE: &str = "option_marker.safetensors";
 pub const CONFIG_FILE: &str = "config.json";
 pub const TOKENIZER_FILE: &str = "tokenizer.json";
@@ -71,7 +74,7 @@ pub fn resolve_checkpoint(explicit: Option<&Path>) -> Result<Checkpoint> {
     #[cfg(feature = "hub")]
     match from_hub() {
         Ok(ckpt) => return Ok(ckpt),
-        Err(why) => tried.push(format!("Hugging Face Hub '{HF_REPO}': {why}")),
+        Err(why) => tried.push(format!("Hugging Face Hub '{HF_REPO}@{HF_REVISION}': {why}")),
     }
     #[cfg(not(feature = "hub"))]
     tried.push("Hugging Face Hub (disabled: built without the `hub` feature)".into());
@@ -109,6 +112,7 @@ fn from_hub() -> Result<Checkpoint, String> {
     let fetch = |file: &str| {
         repo.download_file()
             .filename(file)
+            .revision(HF_REVISION)
             .send()
             .map_err(|e| format!("{file}: {e}"))
     };
@@ -120,7 +124,7 @@ fn from_hub() -> Result<Checkpoint, String> {
         tokenizer: fetch(TOKENIZER_FILE)?,
         tokenizer_config: fetch(TOKENIZER_CONFIG_FILE).ok(),
         calibration: fetch(CALIBRATION_FILE).ok(),
-        source: format!("Hugging Face Hub '{HF_REPO}'"),
+        source: format!("Hugging Face Hub '{HF_REPO}@{HF_REVISION}'"),
     })
 }
 

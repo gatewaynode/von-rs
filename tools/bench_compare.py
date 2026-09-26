@@ -8,7 +8,8 @@ weights come off disk), then measure
     examples/latency.rs and tools/bench_python.py;
   - throughput: CONCURRENCY clients sending THROUGHPUT_REQUESTS short requests;
   - resident memory (RSS) after the run.
-Both servers load from local files only (Python with HF_HUB_OFFLINE=1).
+Both servers load from local files only: Rust from VON_WEIGHTS, Python (with
+HF_HUB_OFFLINE=1) from the pinned Von 1.2 Hub snapshot (tools/hub_pins.py).
 The markdown result replaces this device's section of bench/RESULTS.md.
 
 Usage (run by bench_compare.sh):
@@ -29,10 +30,12 @@ import time
 import httpx
 import psutil
 
+from hub_pins import snapshot
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 RS = os.path.dirname(HERE)
 # Converted checkpoint; `just` and tools/model_paths.sh set VON_WEIGHTS (VON_MODELS_DIR).
-WEIGHTS = os.path.abspath(os.environ.get("VON_WEIGHTS") or os.path.join(RS, "checkpoints", "von-1.1"))
+WEIGHTS = os.path.abspath(os.environ.get("VON_WEIGHTS") or os.path.join(RS, "checkpoints", "von-1.2"))
 ROOT = os.path.dirname(RS)
 
 # Same requests and iteration counts as examples/latency.rs (the long one fewer times).
@@ -45,7 +48,7 @@ THROUGHPUT_CASE = "route-account-access"
 
 
 def golden_payloads():
-    golden = json.load(open(os.path.join(RS, "tests", "fixtures", "golden", "v1.json")))
+    golden = json.load(open(os.path.join(RS, "tests", "fixtures", "golden", "v1_2.json")))
     by_id = {c["id"]: c for c in golden["cases"]}
     return {cid: {"model": "von-latest", "state": by_id[cid]["state"], "questions": by_id[cid]["questions"]}
             for cid in CASES}
@@ -181,7 +184,10 @@ def main():
     # loads from a local checkpoint; otherwise network latency lands in the cold start.
     py_env = {**env, "PYTHONPATH": py_src, "HF_HUB_OFFLINE": "1",
               "VON_DEVICE": "mps" if args.device == "metal" else "cpu"}
-    py_cmd = [sys.executable, "-c", "from von.cli import main; main()", "serve",
+    # Python has no checkpoint setting; point its default lookup at the pinned snapshot.
+    boot = ("import sys; from von.backends.option_marker_backend import OptionMarkerBackend as B; "
+            "B.DEFAULT_CHECKPOINT_DIRS = (sys.argv.pop(1),); from von.cli import main; main()")
+    py_cmd = [sys.executable, "-c", boot, snapshot("1.2"), "serve",
               "--host", "127.0.0.1", "--port", str(args.port)]
     rs_env = {**env, "VON_DEVICE": args.device, "VON_CHECKPOINT_DIR": WEIGHTS}
     rs_cmd = [args.von, "serve", "--host", "127.0.0.1", "--port", str(args.port)]

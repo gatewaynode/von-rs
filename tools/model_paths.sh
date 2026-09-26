@@ -4,12 +4,15 @@
 # file `${XDG_CONFIG_HOME:-~/.config}/von/von.env` (shared with the `von`
 # binary), else from `von-rs/.env` (gitignored). In a file it is one
 # `VON_MODELS_DIR=/path` line. When it is set:
-#   VON_WEIGHTS = $VON_MODELS_DIR/von-1.1       (converted checkpoint)
-#   HF_HOME     = $VON_MODELS_DIR/huggingface   (Hub cache, shared with Python)
-# When it is unset, both stay inside the checkout:
-#   VON_WEIGHTS = von-rs/checkpoints/von-1.1
-#   HF_HOME     = <repo root>/.hf-cache
-# An explicit VON_WEIGHTS or HF_HOME always wins. Both are exported as absolute paths.
+#   VON_WEIGHTS     = $VON_MODELS_DIR/von-1.2       (converted checkpoint)
+#   VON_WEIGHTS_V11 = $VON_MODELS_DIR/von-1.1       (optional Von 1.1 regression checkpoint)
+#   HF_HOME         = $VON_MODELS_DIR/huggingface   (Hub cache, shared with Python)
+# When it is unset, all stay inside the checkout:
+#   VON_WEIGHTS     = von-rs/checkpoints/von-1.2
+#   VON_WEIGHTS_V11 = von-rs/checkpoints/von-1.1
+#   HF_HOME         = <repo root>/.hf-cache
+# An explicit value always wins. All are exported as absolute paths. The 1.1 tests
+# skip themselves when VON_WEIGHTS_V11 holds no checkpoint.
 
 _vmp_rs="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 _vmp_root="$(cd "$_vmp_rs/.." && pwd)"
@@ -32,12 +35,15 @@ esac
 
 if [ -n "${VON_MODELS_DIR:-}" ]; then
   export VON_MODELS_DIR
-  export VON_WEIGHTS="${VON_WEIGHTS:-$VON_MODELS_DIR/von-1.1}"
+  export VON_WEIGHTS="${VON_WEIGHTS:-$VON_MODELS_DIR/von-1.2}"
+  export VON_WEIGHTS_V11="${VON_WEIGHTS_V11:-$VON_MODELS_DIR/von-1.1}"
   export HF_HOME="${HF_HOME:-$VON_MODELS_DIR/huggingface}"
 else
-  export VON_WEIGHTS="${VON_WEIGHTS:-$_vmp_rs/checkpoints/von-1.1}"
+  export VON_WEIGHTS="${VON_WEIGHTS:-$_vmp_rs/checkpoints/von-1.2}"
+  export VON_WEIGHTS_V11="${VON_WEIGHTS_V11:-$_vmp_rs/checkpoints/von-1.1}"
   export HF_HOME="${HF_HOME:-$_vmp_root/.hf-cache}"
 fi
 case "$VON_WEIGHTS" in /*) ;; *) VON_WEIGHTS="$PWD/$VON_WEIGHTS" ;; esac
+case "$VON_WEIGHTS_V11" in /*) ;; *) VON_WEIGHTS_V11="$PWD/$VON_WEIGHTS_V11" ;; esac
 case "$HF_HOME" in /*) ;; *) HF_HOME="$PWD/$HF_HOME" ;; esac
 unset _vmp_rs _vmp_root _vmp_xdg _vmp_file
