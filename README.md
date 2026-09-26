@@ -353,3 +353,10 @@ Re-audit, and add a row to the log below, when any of these happen:
 | Date | candle | Change | Checked | Result |
 |---|---|---|---|---|
 | 2026-09-22 | 0.11.0 | Introduced | SAFETY invariants 1–3 read against candle source; `static_inventory` passes; `mapping_is_released_after_load` passes on CPU and Metal | Approved by project owner |
+
+## License
+
+Apache-2.0. Copyright 2026 John Warren. See `LICENSE`.
+
+von-rs is a port of [Von](https://github.com/wfzyx/von), the original Python runtime
+and model by Victor Hugo Panisa, which is also Apache-2.0.
