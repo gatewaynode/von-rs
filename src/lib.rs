@@ -22,6 +22,7 @@
 pub mod api;
 pub mod backend;
 pub mod calibration;
+pub mod config;
 pub mod device;
 pub mod engine;
 pub mod error;

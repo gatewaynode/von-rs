@@ -2,7 +2,8 @@
 # find the repo root themselves.
 
 # Model storage: set VON_MODELS_DIR (environment, or a `VON_MODELS_DIR=/path` line in
-# the gitignored `.env`) to keep models outside the checkout. See tools/model_paths.sh.
+# ~/.config/von/von.env or the gitignored `.env`) to keep models outside the checkout.
+# See tools/model_paths.sh.
 export VON_MODELS_DIR := `. tools/model_paths.sh && printf %s "${VON_MODELS_DIR:-}"`
 export VON_WEIGHTS := `. tools/model_paths.sh && printf %s "$VON_WEIGHTS"`
 export HF_HOME := `. tools/model_paths.sh && printf %s "$HF_HOME"`

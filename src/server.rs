@@ -48,11 +48,14 @@ impl ServerConfig {
     /// `VON_API_KEY` (empty means unset) and `VON_CORS_ORIGINS` (default `*`).
     /// Python reads the key on every request; von-rs reads it once at startup.
     pub fn from_env(max_in_flight: usize) -> Self {
+        Self::from_lookup(max_in_flight, |k| std::env::var(k).ok())
+    }
+
+    /// Like [`ServerConfig::from_env`], reading variables through `lookup`.
+    pub fn from_lookup(max_in_flight: usize, lookup: impl Fn(&str) -> Option<String>) -> Self {
         Self {
-            api_key: std::env::var("VON_API_KEY").ok().filter(|k| !k.is_empty()),
-            cors_origins: parse_origins(
-                std::env::var("VON_CORS_ORIGINS").as_deref().unwrap_or("*"),
-            ),
+            api_key: lookup("VON_API_KEY").filter(|k| !k.is_empty()),
+            cors_origins: parse_origins(lookup("VON_CORS_ORIGINS").as_deref().unwrap_or("*")),
             max_in_flight,
         }
     }

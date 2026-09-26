@@ -25,14 +25,17 @@ uv run python von-rs/tools/convert_weights.py --out von-rs/checkpoints/von-1.1
 
 The conversion is verified bit for bit. `checkpoints/` is gitignored.
 
-To keep models outside the checkout, set `VON_MODELS_DIR` in the environment or in a
-gitignored `von-rs/.env` (one `VON_MODELS_DIR=/path` line). The `just` recipes and
+To keep models outside the checkout, set `VON_MODELS_DIR` in the environment, in the
+settings file `~/.config/von/von.env` (see [Settings file](#settings-file)), or in a
+gitignored `von-rs/.env`, in that order of precedence; in a file it is one
+`VON_MODELS_DIR=/path` line. The `just` recipes and
 `tools/` scripts then use `$VON_MODELS_DIR/von-1.1` for the converted checkpoint and
 `$VON_MODELS_DIR/huggingface` as `HF_HOME`, and `just convert` writes there. Without it,
 they use `checkpoints/von-1.1` and the repo root's `.hf-cache`. An explicit `VON_WEIGHTS`
 or `HF_HOME` overrides either; `just models` prints the paths in use. This only affects
 the development tools: the `von` binary and library find a checkpoint as described in
-[Configuration](#configuration), so point `VON_CHECKPOINT_DIR` at the same directory.
+[Configuration](#configuration), so point `VON_CHECKPOINT_DIR` at the same directory
+(the settings file can hold both).
 
 ## Server and CLI
 
@@ -99,6 +102,28 @@ let answer = decide(&remote, &json!("I was charged twice"), ["refund", "bug"], N
 | `VON_CORS_ORIGINS` (server) | Comma-separated allowed origins. `*` alone allows any origin without credentials; a list enables credentials | `*` |
 | `VON_BASE_URL` | `VonClient` server root | `http://localhost:8000` |
 | `VON_API_KEY`, then `TYPESAFE_API_KEY` | `VonClient` Bearer token | none |
+
+### Settings file
+
+The `von` binary also reads `VON_CHECKPOINT_DIR`, `VON_DEVICE`, `VON_BACKEND`,
+`VON_API_KEY` and `VON_CORS_ORIGINS` from `$XDG_CONFIG_HOME/von/von.env`
+(`~/.config/von/von.env` when `XDG_CONFIG_HOME` is unset). Environment variables
+and command-line flags override the file. For example:
+
+```bash
+# ~/.config/von/von.env
+# VON_MODELS_DIR is used by the dev tools only.
+VON_MODELS_DIR=~/.local/models
+VON_CHECKPOINT_DIR=~/.local/models/von-1.1
+VON_DEVICE=metal
+```
+
+One `KEY=value` per line. Blank lines and `#` lines are skipped, an `export `
+prefix and one pair of surrounding quotes are allowed, and a leading `~/` expands to
+the home directory. There are no inline comments after a value. Other keys are ignored,
+and a malformed line is skipped with a warning. `HF_HOME` and the Hub variables
+are read from the environment only. The library never reads the file itself;
+`von::config::Config` loads it for callers that want the same behaviour.
 
 Checkpoint search order: `VON_CHECKPOINT_DIR`, then `checkpoints/von-option-marker-universal`,
 `checkpoints/von-option-marker` and `checkpoints/von-1.1` (relative to the working
@@ -204,6 +229,8 @@ The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
   of a traceback. `--version` prints `1.1.0`; Python's CLI still says `1.0.0`.
   `--device` accepts `auto`, `metal`/`mps` and `cpu`. `serve --reload` is accepted
   and ignored with a warning.
+- **Settings file.** The `von` binary also reads `~/.config/von/von.env` (see
+  [Settings file](#settings-file)); Python reads only the environment.
 
 ## Unsafe code audit
 
