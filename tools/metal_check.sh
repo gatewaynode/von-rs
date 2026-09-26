@@ -7,6 +7,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export HF_HOME="${HF_HOME:-$ROOT/.hf-cache}"
+export VON_PY_SRC="${VON_PY_SRC:-$ROOT/bug-fix-fork-von/src}"
 cd "$ROOT/von-rs"
 echo "== Rust parity + unsafe audit + patterns on Metal =="
 VON_WEIGHTS=checkpoints/von-1.1 VON_DEVICE=metal \

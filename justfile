@@ -37,6 +37,21 @@ bench-metal:
 latency device="cpu":
     VON_DEVICE={{device}} cargo run --release --example latency
 
+# Optional filter, e.g. `just bench metal /512`.
+# Criterion latency benchmarks: choice, zero-shot noul and 10-level score at 64/512/4096 tokens.
+bench device="cpu" filter="":
+    VON_DEVICE={{device}} cargo bench --bench latency -- {{filter}}
+
+# `PURGE=1 just bench-compare metal` measures a true cold start (sudo purge; normal terminal).
+# Python server vs `von serve`: cold start, latency, throughput, memory -> bench/RESULTS.md.
+bench-compare device="cpu":
+    bash tools/bench_compare.sh {{device}}
+
+# Soak `von serve`: 10k requests at concurrency 64, checking statuses and RSS growth.
+soak device="cpu" requests="10000":
+    cargo build --release -q --bin von
+    cd .. && uv run python von-rs/tools/soak.py --device {{device}} --requests {{requests}}
+
 # Regenerate the Python fixtures from the fork (the golden set also needs the model).
 fixtures:
     cd .. && VON_PY_SRC=bug-fix-fork-von/src uv run python von-rs/tools/export_pyfixtures.py

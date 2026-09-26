@@ -9,7 +9,8 @@ reference implementation, and von-rs matches it numerically: see [Parity](#parit
 `decide`/`judge`/`rate` helpers, patterns, presets, the remote client, and a
 drop-in `von` server and CLI, all verified against Python on CPU and Metal.
 It is not tuned yet: on Metal it is 1.4–1.7× slower than PyTorch MPS on short
-requests and 3.7× at about 800 tokens (see `bench/BASELINE.md`). Performance
+requests and 3.7× at about 800 tokens (see `bench/BASELINE.md` and
+`bench/RESULTS.md`). Performance
 work comes after the port is complete, followed by an async API.
 
 ## Setup
@@ -117,19 +118,29 @@ bash tools/cross_sdk_check.sh                 # VON_DEVICE=metal for the GPU pat
 ## Development layout
 
 The Rust crate builds and tests on its own. The tools in `tools/` that talk to
-Python (weight conversion, fixture export, the cross-SDK check and the benchmark)
+Python (weight conversion, fixture export, the cross-SDK check, the benchmarks and the soak test)
 expect this repository to be cloned as `von-rs/` inside a checkout of the Python
 Von repository, whose `uv` environment they run in. Two variables point them at
 other sources:
 
 | Variable | Used by | Default |
 |---|---|---|
-| `VON_PY_SRC` | fixture exporters, cross-SDK check | the enclosing checkout's `src/` (`bug-fix-fork-von/src` for the cross-SDK check) |
+| `VON_PY_SRC` | fixture exporters, cross-SDK check, benchmarks | the enclosing checkout's `src/` (`bug-fix-fork-von/src` for the cross-SDK check and `bench_compare.sh`) |
 | `SDK_JS` | cross-SDK check | `bug-fix-fork-von/js` next to `von-rs/` |
 
 The `justfile` wraps the common runs: `just test`, `just gate-cpu`,
 `just gate-server [cpu|metal]`, `just gate-metal`, `just bench-metal` and
-`just fixtures`.
+`just fixtures`. For measurement:
+
+- `just bench [cpu|metal] [filter]`: criterion benchmarks (`benches/latency.rs`) of
+  a choice, a zero-shot Noul and a 10-level score at 64, 512 and 4,096 tokens.
+- `just bench-compare [cpu|metal]`: the Python server against `von serve` on the
+  same requests (cold start, latency, throughput, memory), written to
+  `bench/RESULTS.md`. `PURGE=1` purges the page cache before each launch for a true
+  cold start; it runs `sudo purge`.
+- `just soak [cpu|metal] [requests]`: 10,000 requests at concurrency 64, a tenth of
+  them error paths, failing on any unexpected status, on more than 10% memory
+  growth after warm-up, or on memory still climbing over the second half of the run.
 
 ## Parity
 
