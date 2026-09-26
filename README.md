@@ -38,7 +38,7 @@ yet published to the Hugging Face repo, so create one from the Python weights wi
 [uv](https://docs.astral.sh/uv/). From a von-rs checkout:
 
 ```bash
-uv run --no-project --with torch --with safetensors --with huggingface_hub \
+uv run --no-project --with torch --with numpy --with safetensors --with huggingface_hub \
   python tools/convert_weights.py --out ~/.local/models/von-1.2
 ```
 
@@ -191,7 +191,7 @@ bash tools/cross_sdk_check.sh                 # VON_DEVICE=metal for the GPU pat
 CI (`.github/workflows/rust.yml`) runs fmt, clippy and `cargo test` on every push and
 pull request. The weights suite and the cross-SDK check need the 1.5 GB model, so they
 run only when the workflow is started by hand ("Run workflow"); the converted checkpoint
-is cached per Hub revision. GitHub's macOS runners have no usable Metal device, so CI
+is cached per pinned Hub revision. GitHub's macOS runners have no usable Metal device, so CI
 tests the CPU path only; run `just gate-metal` locally for Metal. Pushing a `v*` tag
 that matches the `Cargo.toml` version runs `.github/workflows/release.yml`, which
 attaches the arm64 binary to a GitHub release.

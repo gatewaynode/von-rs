@@ -10,8 +10,8 @@ on:
         description: Python Von repository for the cross-SDK check (owner/name)
         default: gatewaynode/von
       python_ref:
-        description: Branch, tag or commit of that repository
-        default: master
+        description: "Branch, tag or commit of that repository (default: the Von 1.2 release)"
+        default: fb6e7a937e4fc6b6e72b2ce5035edd56bc370e54
 
 env:
   CARGO_TERM_COLOR: always
@@ -42,12 +42,12 @@ jobs:
       key: ${{ steps.key.outputs.key }}
     steps:
       - uses: actions/checkout@v5
-      - name: Cache key from the Hub revision
+      - name: Cache key from the pinned Hub revision
         id: key
         run: |
-          sha=$(curl -sf https://huggingface.co/api/models/wfzyx/von/revision/main \
-            | python3 -c 'import json, sys; print(json.load(sys.stdin)["sha"])')
-          echo "key=von-weights-$sha" >> "$GITHUB_OUTPUT"
+          rev=$(sed -n 's/^HF_REVISION = "\(.*\)"$/\1/p' tools/hub_pins.py)
+          test -n "$rev"
+          echo "key=von-weights-$rev" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         id: cache
         with:
@@ -62,7 +62,7 @@ jobs:
           HF_HOME: ${{ runner.temp }}/hf
         run: >
           uv run --no-project --python 3.12
-          --with torch --with safetensors --with huggingface_hub
+          --with torch --with numpy --with safetensors --with huggingface_hub
           python tools/convert_weights.py --out weights
 
   parity:
@@ -78,6 +78,7 @@ jobs:
           path: weights
           key: ${{ needs.weights.outputs.key }}
           fail-on-cache-miss: true
+      # Von 1.2 only: the Von 1.1 regression set skips without VON_WEIGHTS_V11.
       - name: Golden parity, unsafe audit, model-backed pattern and client tests
         env:
           VON_WEIGHTS: ${{ github.workspace }}/weights
