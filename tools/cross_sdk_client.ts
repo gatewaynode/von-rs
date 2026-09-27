@@ -1,6 +1,7 @@
 // Protocol-parity check, client side: drives a running `von serve` with the unmodified JS SDK
 // (bug-fix-fork-von/js/src). Run by cross_sdk_check.sh:
 //   bun run cross_sdk_client.ts BASE_URL API_KEY SDK_DIR
+// Env: CROSS_SDK_TIMEOUT, seconds per request (default 300, as in cross_sdk_client.py).
 const [base, apiKey, sdkDir] = process.argv.slice(2);
 const { VonClient, VonError, choice, noul, score } = await import(`${sdkDir}/src/index.ts`);
 
@@ -11,7 +12,8 @@ function check(ok: boolean, what: string, detail: unknown) {
   }
 }
 
-const client = new VonClient({ baseURL: base, apiKey });
+const timeout = Number(process.env.CROSS_SDK_TIMEOUT ?? "300") * 1000;
+const client = new VonClient({ baseURL: base, apiKey, timeout });
 
 const resp = await client.systemOne({
   state: "The user clicked the checkout button but received a credit card decline error.",

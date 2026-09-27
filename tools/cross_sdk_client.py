@@ -7,11 +7,14 @@
    against the Rust server over real HTTP, including Bearer auth.
 
 Usage: python cross_sdk_client.py BASE_URL API_KEY   (run by cross_sdk_check.sh)
+Env: CROSS_SDK_TIMEOUT, seconds per request (default 300; CI runners are much slower than
+a local Mac, and the SDKs' own 30 s default fails there on the longest golden requests).
 """
 
 import json
 import os
 import sys
+import time
 
 import httpx
 
@@ -22,6 +25,7 @@ from von.client import VonClient  # noqa: E402
 from von.types import choice, noul  # noqa: E402
 
 PROB_TOL, SCORE_TOL = 2e-3, 1e-2
+TIMEOUT = float(os.environ.get("CROSS_SDK_TIMEOUT", "300"))
 
 
 def compare(case_id, got, want, failures):
@@ -64,12 +68,15 @@ def main():
 
     # 1. Golden parity over HTTP through the Python SDK.
     golden = json.load(open(os.path.join(HERE, "..", "tests", "fixtures", "golden", "v1_2.json")))
-    client = VonClient(base_url=base, api_key=key, local=False)
-    worst = 0.0
+    client = VonClient(base_url=base, api_key=key, local=False, timeout=TIMEOUT)
+    worst, slowest = 0.0, 0.0
     for case in golden["cases"]:
+        start = time.monotonic()
         resp = client.system_one(state=case["state"], questions=case["questions"])
+        slowest = max(slowest, time.monotonic() - start)
         worst = max(worst, compare(case["id"], resp.model_dump(), case["response"], failures))
-    print(f"golden over HTTP: {len(golden['cases'])} requests, worst probability delta {worst:.2e}")
+    print(f"golden over HTTP: {len(golden['cases'])} requests, worst probability delta {worst:.2e}, "
+          f"slowest {slowest:.1f} s")
 
     # 2. test_server.py, over real HTTP.
     h = {"Authorization": f"Bearer {key}"}
@@ -87,7 +94,7 @@ def main():
             "is_payment": {"type": "noul", "instructions": "Is this a payment failure?"},
         },
     }
-    r = httpx.post(f"{base}/v1/systemone", json=payload, headers=h)
+    r = httpx.post(f"{base}/v1/systemone", json=payload, headers=h, timeout=TIMEOUT)
     assert r.status_code == 200, r.text
     data = r.json()
     assert data["model"] == "von-1.2.0" and data["answers"]["error_type"]["choice"] == "payment_error", data
