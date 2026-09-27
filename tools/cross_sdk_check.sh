@@ -33,7 +33,7 @@ done
 curl -sf "$BASE/health" >/dev/null || { echo "server did not come up"; exit 1; }
 
 echo "== Python SDK =="
-(cd "$ROOT" && uv run python "$RS/tools/cross_sdk_client.py" "$BASE" "$KEY")
+(cd "$ROOT" && SERVER_PID=$SERVER uv run python "$RS/tools/cross_sdk_client.py" "$BASE" "$KEY")
 echo "== JS SDK =="
 bun run "$RS/tools/cross_sdk_client.ts" "$BASE" "$KEY" "$SDK_JS"
 echo "== cross-SDK check passed =="
