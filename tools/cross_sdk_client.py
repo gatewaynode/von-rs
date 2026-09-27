@@ -12,6 +12,9 @@ a local Mac, and the SDKs' own 30 s default fails there on the longest golden re
 Each golden request prints its time; one still running prints a heartbeat every
 CROSS_SDK_HEARTBEAT seconds (default 5) with the server's memory (SERVER_PID) and the
 machine's available memory, so a slow or stuck request shows where it is.
+CROSS_SDK_MAX_TOKENS skips golden requests whose recorded input tokens exceed it (default:
+none skipped). CI sets it: the longest request needs ~6.5 GB in `von serve`, about all of a
+GitHub macOS runner's memory; the in-process parity tests still cover it there.
 """
 
 import json
@@ -32,6 +35,7 @@ from von.types import choice, noul  # noqa: E402
 PROB_TOL, SCORE_TOL = 2e-3, 1e-2
 TIMEOUT = float(os.environ.get("CROSS_SDK_TIMEOUT", "300"))
 HEARTBEAT = float(os.environ.get("CROSS_SDK_HEARTBEAT", "5"))
+MAX_TOKENS = int(os.environ.get("CROSS_SDK_MAX_TOKENS", "0")) or None
 
 
 def memory():
@@ -108,9 +112,16 @@ def main():
     # 1. Golden parity over HTTP through the Python SDK.
     golden = json.load(open(os.path.join(HERE, "..", "tests", "fixtures", "golden", "v1_2.json")))
     client = VonClient(base_url=base, api_key=key, local=False, timeout=TIMEOUT)
+    cases = golden["cases"]
+    if MAX_TOKENS:
+        skipped = [c for c in cases if c["response"]["usage"]["input_tokens"] > MAX_TOKENS]
+        for c in skipped:
+            print(f"skip {c['id']}: {c['response']['usage']['input_tokens']} input tokens "
+                  f"> CROSS_SDK_MAX_TOKENS={MAX_TOKENS}")
+        cases = [c for c in cases if c not in skipped]
     worst, slowest = 0.0, 0.0
-    for i, case in enumerate(golden["cases"], 1):
-        label = f"[{i}/{len(golden['cases'])}] {case['id']}"
+    for i, case in enumerate(cases, 1):
+        label = f"[{i}/{len(cases)}] {case['id']}"
         start = time.monotonic()
         with heartbeat(label):
             resp = client.system_one(state=case["state"], questions=case["questions"])
@@ -118,7 +129,7 @@ def main():
         slowest = max(slowest, elapsed)
         print(f"{label}: {elapsed:.1f} s", flush=True)
         worst = max(worst, compare(case["id"], resp.model_dump(), case["response"], failures))
-    print(f"golden over HTTP: {len(golden['cases'])} requests, worst probability delta {worst:.2e}, "
+    print(f"golden over HTTP: {len(cases)} requests, worst probability delta {worst:.2e}, "
           f"slowest {slowest:.1f} s")
 
     # 2. test_server.py, over real HTTP.
