@@ -114,4 +114,7 @@ jobs:
           VON_WEIGHTS: ${{ github.workspace }}/weights
           VON_PY_SRC: ${{ github.workspace }}/von/src
           SDK_JS: ${{ github.workspace }}/von/js
+          # The 5,044-token golden request needs ~6.5 GB in the server, about all of the
+          # runner's memory; it swaps past any timeout. The parity job still checks it.
+          CROSS_SDK_MAX_TOKENS: 2048
         run: bash von/von-rs/tools/cross_sdk_check.sh

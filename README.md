@@ -192,7 +192,9 @@ CI (`.github/workflows/rust.yml`) runs fmt, clippy and `cargo test` on every pus
 pull request. The weights suite and the cross-SDK check need the 1.5 GB model, so they
 run only when the workflow is started by hand ("Run workflow"); the converted checkpoint
 is cached per pinned Hub revision. GitHub's macOS runners have no usable Metal device, so CI
-tests the CPU path only; run `just gate-metal` locally for Metal. Pushing a `v*` tag
+tests the CPU path only; run `just gate-metal` locally for Metal. The runners' 7 GB of memory
+is too little to serve the longest golden request (about 5,000 tokens), so CI's cross-SDK check
+skips it (`CROSS_SDK_MAX_TOKENS`); the parity job still checks it in process. Pushing a `v*` tag
 that matches the `Cargo.toml` version runs `.github/workflows/release.yml`, which
 attaches the arm64 binary to a GitHub release.
 

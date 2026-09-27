@@ -9,12 +9,20 @@
 Usage: python cross_sdk_client.py BASE_URL API_KEY   (run by cross_sdk_check.sh)
 Env: CROSS_SDK_TIMEOUT, seconds per request (default 300; CI runners are much slower than
 a local Mac, and the SDKs' own 30 s default fails there on the longest golden requests).
+Each golden request prints its time; one still running prints a heartbeat every
+CROSS_SDK_HEARTBEAT seconds (default 5) with the server's memory (SERVER_PID) and the
+machine's available memory, so a slow or stuck request shows where it is.
+CROSS_SDK_MAX_TOKENS skips golden requests whose recorded input tokens exceed it (default:
+none skipped). CI sets it: the longest request needs ~6.5 GB in `von serve`, about all of a
+GitHub macOS runner's memory; the in-process parity tests still cover it there.
 """
 
 import json
 import os
 import sys
+import threading
 import time
+from contextlib import contextmanager
 
 import httpx
 
@@ -26,6 +34,41 @@ from von.types import choice, noul  # noqa: E402
 
 PROB_TOL, SCORE_TOL = 2e-3, 1e-2
 TIMEOUT = float(os.environ.get("CROSS_SDK_TIMEOUT", "300"))
+HEARTBEAT = float(os.environ.get("CROSS_SDK_HEARTBEAT", "5"))
+MAX_TOKENS = int(os.environ.get("CROSS_SDK_MAX_TOKENS", "0")) or None
+
+
+def memory():
+    try:
+        import psutil
+    except ImportError:
+        return ""
+    parts = []
+    pid = os.environ.get("SERVER_PID")
+    if pid:
+        try:
+            parts.append(f"server RSS {psutil.Process(int(pid)).memory_info().rss >> 20} MB")
+        except psutil.Error:
+            parts.append("server gone")
+    parts.append(f"available {psutil.virtual_memory().available >> 20} MB")
+    return " (" + ", ".join(parts) + ")"
+
+
+@contextmanager
+def heartbeat(label):
+    start, done = time.monotonic(), threading.Event()
+
+    def beat():
+        while not done.wait(HEARTBEAT):
+            print(f"  ... {label}: {time.monotonic() - start:.0f} s{memory()}", flush=True)
+
+    thread = threading.Thread(target=beat, daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        done.set()
+        thread.join()
 
 
 def compare(case_id, got, want, failures):
@@ -69,13 +112,24 @@ def main():
     # 1. Golden parity over HTTP through the Python SDK.
     golden = json.load(open(os.path.join(HERE, "..", "tests", "fixtures", "golden", "v1_2.json")))
     client = VonClient(base_url=base, api_key=key, local=False, timeout=TIMEOUT)
+    cases = golden["cases"]
+    if MAX_TOKENS:
+        skipped = [c for c in cases if c["response"]["usage"]["input_tokens"] > MAX_TOKENS]
+        for c in skipped:
+            print(f"skip {c['id']}: {c['response']['usage']['input_tokens']} input tokens "
+                  f"> CROSS_SDK_MAX_TOKENS={MAX_TOKENS}")
+        cases = [c for c in cases if c not in skipped]
     worst, slowest = 0.0, 0.0
-    for case in golden["cases"]:
+    for i, case in enumerate(cases, 1):
+        label = f"[{i}/{len(cases)}] {case['id']}"
         start = time.monotonic()
-        resp = client.system_one(state=case["state"], questions=case["questions"])
-        slowest = max(slowest, time.monotonic() - start)
+        with heartbeat(label):
+            resp = client.system_one(state=case["state"], questions=case["questions"])
+        elapsed = time.monotonic() - start
+        slowest = max(slowest, elapsed)
+        print(f"{label}: {elapsed:.1f} s", flush=True)
         worst = max(worst, compare(case["id"], resp.model_dump(), case["response"], failures))
-    print(f"golden over HTTP: {len(golden['cases'])} requests, worst probability delta {worst:.2e}, "
+    print(f"golden over HTTP: {len(cases)} requests, worst probability delta {worst:.2e}, "
           f"slowest {slowest:.1f} s")
 
     # 2. test_server.py, over real HTTP.
